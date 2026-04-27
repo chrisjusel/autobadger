@@ -1,13 +1,13 @@
 {% extends "base.html" %}
 
 {% block content %}
-  <div class="card table">
+  <div class="card table schedule-table">
     <div class="panel-head">
       <div>
         <h2>Pianificazioni presenti</h2>
         <p class="muted">Ultima pianificazione: {{ fmt_datetime(last_planned_at) }}</p>
       </div>
-      <div class="actions">
+      <div class="actions planning-actions">
         <form method="post" action="{{ url_for('dashboard_replan') }}">
           <button class="alt">Aggiorna pianificazione</button>
         </form>
@@ -33,15 +33,15 @@
       </thead>
       <tbody>
         {% for entry in schedules %}
-          <tr>
-            <td>{{ fmt_date(entry.date) }}</td>
-            <td>{{ entry.username }}</td>
-            <td>{{ fmt_datetime(entry.planned_at) }}</td>
-            <td>{{ "In sede" if entry.in_office else "Telelavoro" }}</td>
-            <td>{{ schedule_cell(entry.badge_in_at, entry.skip_badge_in, entry.badge_in_executed) }}</td>
-            <td>{{ schedule_cell(entry.badge_out_at, entry.skip_badge_out, entry.badge_out_executed) }}</td>
-            <td>{{ entry.note or "-" }}</td>
-            <td>
+          <tr class="schedule-row">
+            <td data-label="Data">{{ fmt_date(entry.date) }}</td>
+            <td data-label="Utente">{{ entry.username }}</td>
+            <td data-label="Elaborata">{{ fmt_datetime(entry.planned_at) }}</td>
+            <td data-label="Modalita">{{ "In sede" if entry.in_office else "Telelavoro" }}</td>
+            <td data-label="Badge IN">{{ schedule_cell(entry.badge_in_at, entry.skip_badge_in, entry.badge_in_executed) }}</td>
+            <td data-label="Badge OUT">{{ schedule_cell(entry.badge_out_at, entry.skip_badge_out, entry.badge_out_executed) }}</td>
+            <td data-label="Note">{{ entry.note or "-" }}</td>
+            <td data-label="Azioni">
               <form class="inlineform" method="post" action="{{ url_for('dashboard_scheduler_delete') }}">
                 <input type="hidden" name="date" value="{{ entry.date }}">
                 <input type="hidden" name="user_id" value="{{ entry.user_id }}">

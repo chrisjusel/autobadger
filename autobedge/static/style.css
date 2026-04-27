@@ -405,25 +405,23 @@ th {
   }
 
   .nav-menu {
-    display: block;
-    flex: 0 0 44px;
-  }
-
-  .nav-menu[open] {
-    flex: 0 0 100%;
-    width: 100%;
+    display: contents;
   }
 
   .hamburger {
     display: inline-flex;
+    flex: 0 0 44px;
     margin-left: auto;
+    order: 2;
   }
 
   .nav-menu .links {
     display: none;
     grid-template-columns: 1fr;
+    flex: 0 0 100%;
     width: 100%;
     margin-top: 12px;
+    order: 3;
   }
 
   .nav-menu[open] .links {
@@ -453,6 +451,61 @@ th {
     min-width: 760px;
   }
 
+  .schedule-table table,
+  .mobile-card-table table {
+    min-width: 0;
+  }
+
+  .schedule-table thead,
+  .mobile-card-table thead {
+    display: none;
+  }
+
+  .schedule-table tbody,
+  .mobile-card-table tbody {
+    display: grid;
+    gap: 12px;
+  }
+
+  .schedule-table tr,
+  .mobile-card-table tr {
+    display: block;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 10px 12px;
+    background: rgba(255, 255, 255, .035);
+  }
+
+  .schedule-table td,
+  .mobile-card-table td {
+    display: grid;
+    grid-template-columns: minmax(92px, 38%) minmax(0, 1fr);
+    gap: 10px;
+    align-items: start;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--line);
+    overflow-wrap: anywhere;
+  }
+
+  .schedule-table td:last-child,
+  .mobile-card-table td:last-child {
+    border-bottom: 0;
+  }
+
+  .schedule-table td::before,
+  .mobile-card-table td::before {
+    content: attr(data-label);
+    color: var(--muted);
+    font-size: .76rem;
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+
+  .schedule-table .inlineform,
+  .mobile-card-table .inlineform {
+    justify-self: start;
+  }
+
   .panel-head {
     display: block;
   }
@@ -460,5 +513,19 @@ th {
   .panel-head .actions {
     justify-content: stretch;
     margin-top: 12px;
+  }
+
+  .planning-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .planning-actions form {
+    min-width: 0;
+  }
+
+  .planning-actions button {
+    min-width: 0;
+    padding-inline: 8px;
   }
 }
