@@ -16,29 +16,20 @@
 html {
   min-height: 100%;
   background: var(--app-bg);
-  overscroll-behavior: none;
 }
 
 body {
   margin: 0;
   min-height: 100dvh;
-  overflow: hidden;
   color: var(--text);
   font-family: Trebuchet MS, Segoe UI, sans-serif;
   background: var(--app-bg);
   line-height: 1.45;
-  overscroll-behavior: none;
 }
 
 .app-shell {
-  position: fixed;
-  inset: 0;
-  overflow-x: hidden;
-  overflow-y: auto;
   min-height: 100dvh;
   background: var(--app-bg);
-  overscroll-behavior: none;
-  -webkit-overflow-scrolling: touch;
 }
 
 .pull-refresh {

@@ -1,5 +1,4 @@
 (function () {
-  const shell = document.querySelector(".app-shell");
   const indicator = document.querySelector(".pull-refresh");
   const threshold = 86;
   const maxPull = 126;
@@ -8,8 +7,12 @@
   let tracking = false;
   let refreshing = false;
 
-  if (!shell || !indicator) {
+  if (!indicator) {
     return;
+  }
+
+  function scrollTop() {
+    return window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
   }
 
   function setPull(distance) {
@@ -29,8 +32,8 @@
     indicator.style.setProperty("--pull-rotation", "0deg");
   }
 
-  shell.addEventListener("touchstart", function (event) {
-    if (refreshing || shell.scrollTop > 0 || event.touches.length !== 1) {
+  window.addEventListener("touchstart", function (event) {
+    if (refreshing || scrollTop() > 0 || event.touches.length !== 1) {
       tracking = false;
       return;
     }
@@ -38,20 +41,19 @@
     tracking = true;
   }, { passive: true });
 
-  shell.addEventListener("touchmove", function (event) {
+  window.addEventListener("touchmove", function (event) {
     if (!tracking || refreshing || event.touches.length !== 1) {
       return;
     }
     const distance = event.touches[0].clientY - startY;
-    if (distance <= 0 || shell.scrollTop > 0) {
+    if (distance <= 0 || scrollTop() > 0) {
       reset();
       return;
     }
-    event.preventDefault();
     setPull(distance * 0.62);
-  }, { passive: false });
+  }, { passive: true });
 
-  shell.addEventListener("touchend", function () {
+  window.addEventListener("touchend", function () {
     if (!tracking || refreshing) {
       return;
     }
@@ -67,5 +69,5 @@
     reset();
   }, { passive: true });
 
-  shell.addEventListener("touchcancel", reset, { passive: true });
+  window.addEventListener("touchcancel", reset, { passive: true });
 })();
