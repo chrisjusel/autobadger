@@ -15,7 +15,11 @@
 
 html {
   min-height: 100%;
-  background: var(--app-bg);
+  background: #07131f;
+  background-image: var(--app-bg);
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+  background-size: cover;
 }
 
 body {
@@ -23,13 +27,14 @@ body {
   min-height: 100dvh;
   color: var(--text);
   font-family: Trebuchet MS, Segoe UI, sans-serif;
-  background: var(--app-bg);
+  background: transparent;
   line-height: 1.45;
 }
 
 .app-shell {
+  position: relative;
   min-height: 100dvh;
-  background: var(--app-bg);
+  background: transparent;
 }
 
 .pull-refresh {
