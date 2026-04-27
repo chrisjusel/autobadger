@@ -55,7 +55,7 @@
       </tbody>
     </table>
   </div>
-  <div class="card table">
+  <div class="card table mobile-card-table">
     <h2>Ultimi 30 eventi</h2>
     <table>
       <thead>
@@ -70,11 +70,11 @@
       <tbody>
         {% for row in logs %}
           <tr>
-            <td>{{ fmt_datetime(row.entry.timestamp) }}</td>
-            <td>{{ row.username }}</td>
-            <td>{{ row.entry.type }}</td>
-            <td>{{ "OK" if row.entry.success else "KO" }}</td>
-            <td>{{ row.entry.note }}</td>
+            <td data-label="Data/Ora">{{ fmt_datetime(row.entry.timestamp) }}</td>
+            <td data-label="Utente">{{ row.username }}</td>
+            <td data-label="Tipo">{{ row.entry.type }}</td>
+            <td data-label="Esito">{{ "OK" if row.entry.success else "KO" }}</td>
+            <td data-label="Note">{{ row.entry.note }}</td>
           </tr>
         {% else %}
           <tr><td colspan="5">Nessun evento disponibile.</td></tr>

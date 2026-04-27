@@ -30,19 +30,18 @@
             <span class="chip chip-role">{{ "Admin" if user.is_admin else "Utente" }}</span>
           </div>
         </div>
+        <input class="nav-toggle" id="nav-toggle" type="checkbox">
+        <label class="hamburger" for="nav-toggle" aria-label="Menu"><span></span></label>
         <div class="links desktop-links">
           {% for link in nav_links %}
             <a class="pill{% if link.active %} active{% endif %}" href="{{ link.href }}">{{ link.label }}</a>
           {% endfor %}
         </div>
-        <details class="nav-menu">
-          <summary class="hamburger" aria-label="Menu"><span></span></summary>
-          <div class="links">
-            {% for link in nav_links %}
-              <a class="pill{% if link.active %} active{% endif %}" href="{{ link.href }}">{{ link.label }}</a>
-            {% endfor %}
-          </div>
-        </details>
+        <div class="links mobile-links">
+          {% for link in nav_links %}
+            <a class="pill{% if link.active %} active{% endif %}" href="{{ link.href }}">{{ link.label }}</a>
+          {% endfor %}
+        </div>
       </div>
     {% endif %}
     {% if message %}
