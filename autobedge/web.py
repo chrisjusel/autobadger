@@ -7,7 +7,6 @@ from urllib.parse import quote
 
 from flask import Flask, Response, redirect, request, session, url_for
 
-from .device import WiFiManager
 from .models import NtfySettings, SchedulerSettings, UserProfile
 from .notification_manager import NotificationManager
 from .scheduler import SchedulerManager
@@ -19,14 +18,12 @@ class WebServerManager:
     def __init__(
         self,
         user_manager: UserManager,
-        wifi_manager: WiFiManager,
         ntp_manager: NTPManager,
         scheduler_manager: SchedulerManager,
         notification_manager: NotificationManager,
         dry_run: bool,
     ) -> None:
         self.user_manager = user_manager
-        self.wifi_manager = wifi_manager
         self.ntp_manager = ntp_manager
         self.scheduler_manager = scheduler_manager
         self.notification_manager = notification_manager
@@ -250,39 +247,6 @@ class WebServerManager:
             ok, error = self.scheduler_manager.update_settings(settings)
             return redirect(self._with_msg("admin", "Configurazione scheduler salvata" if ok else error))
 
-        @app.post("/admin/restart")
-        def admin_restart() -> str | Response:
-            user = self._require_admin()
-            if not isinstance(user, UserProfile):
-                return user
-            return self._page("Riavvio", "<div class='card'><h1>Riavvio non gestito dall'app</h1><p>Su Linux usa systemd o il gestore della VM per riavviare il servizio.</p></div>", user)
-
-        @app.post("/admin/reset-wifi")
-        def admin_reset_wifi() -> Response:
-            user = self._require_admin()
-            if not isinstance(user, UserProfile):
-                return user
-            self.wifi_manager.reset_saved_network()
-            return redirect(self._with_msg("admin", "Metadati WiFi rimossi. Su Linux la rete resta gestita dal sistema operativo."))
-
-        @app.get("/wifi")
-        def wifi() -> str | Response:
-            user = self._require_admin()
-            if not isinstance(user, UserProfile):
-                return user
-            return self._wifi_page(user, request.args.get("msg", ""))
-
-        @app.post("/wifi/update")
-        def wifi_update() -> Response:
-            user = self._require_admin()
-            if not isinstance(user, UserProfile):
-                return user
-            ssid = request.form.get("ssid_manual") or request.form.get("ssid", "")
-            if not ssid:
-                return redirect(self._with_msg("wifi", "SSID obbligatorio"))
-            self.wifi_manager.save_and_connect(ssid, request.form.get("password", ""))
-            return redirect(self._with_msg("wifi", "Metadati rete salvati. La connessione Linux va configurata fuori dall'app."))
-
     def _current_user(self) -> UserProfile | None:
         user_id = session.get("user_id")
         return self.user_manager.get_user_by_id(int(user_id)) if user_id else None
@@ -334,7 +298,7 @@ table{{width:100%;border-collapse:collapse}}th,td{{padding:12px;border-bottom:1p
         if not user.is_admin:
             links.extend(["<a class='pill' href='/settings'>Impostazioni</a>", "<a class='pill' href='/pauses'>Pause</a>"])
         if user.is_admin:
-            links.extend(["<a class='pill' href='/admin'>Admin</a>", "<a class='pill' href='/diagnostics'>Diagnostica</a>", "<a class='pill' href='/wifi'>WiFi</a>"])
+            links.extend(["<a class='pill' href='/admin'>Admin</a>", "<a class='pill' href='/diagnostics'>Diagnostica</a>"])
         links.append("<a class='pill' href='/logout'>Logout</a>")
         return f"<div class='card nav'><div><b>Corem Badger</b><div class='muted'>{self._e(user.username)} - {'Admin' if user.is_admin else 'Utente'}</div></div><div class='links'>{''.join(links)}</div></div>"
 
@@ -383,14 +347,10 @@ table{{width:100%;border-collapse:collapse}}th,td{{padding:12px;border-bottom:1p
         return self._page("Pause", body, user)
 
     def _diagnostics_page(self, user: UserProfile, message: str) -> str:
-        users = self.user_manager.get_all_users()
-        corem_users = [candidate for candidate in users if not candidate.is_admin and (candidate.corem_username or candidate.corem_user_id or candidate.jwt_token or candidate.refresh_token)]
         schedules = self.scheduler_manager.get_schedules_snapshot()
-        dates = self.scheduler_manager.get_planned_dates_snapshot()
         options = "".join(f"<option value='{candidate.id}'>{self._e(candidate.username)}</option>" for candidate in self.user_manager.get_corem_enabled_users())
         schedule_rows = "".join(f"<tr><td>{self._fmt_date(entry.date)}</td><td>{self._e(entry.username)}</td><td>{self._e(entry.note or '-')}</td><td><form method='post' action='/admin/scheduler/delete'><input type='hidden' name='date' value='{self._e(entry.date)}'><input type='hidden' name='user_id' value='{entry.user_id}'><button class='danger'>Cancella</button></form></td></tr>" for entry in schedules) or "<tr><td colspan='4'>Nessuna pianificazione presente.</td></tr>"
-        stats = f"<div class='stats'><div class='stat'>WiFi<b>{'Online' if self.wifi_manager.is_connected() else 'Offline'}</b></div><div class='stat'>NTP<b>{'Sync OK' if self.ntp_manager.is_synced() else 'No sync'}</b></div><div class='stat'>Utenti Corem<b>{len(corem_users)}</b></div><div class='stat'>Date pianificate<b>{len(dates)}</b></div></div>"
-        body = f"{self._msg(message)}<div class='card hero'><h1>Diagnostica</h1>{stats}</div><div class='card'><h2>Pianificazione manuale</h2><form method='post' action='/admin/scheduler/replan'><div class='grid'><label>Data<input type='date' name='date' value='{self.ntp_manager.get_current_date()}'></label><label>Utente<select name='user_id'><option value='0'>Tutti gli utenti Corem</option>{options}</select></label></div><div class='actions'><button class='alt'>Avvia pianificazione</button></div></form></div><div class='card table'><h2>Pianificazioni salvate</h2><table><thead><tr><th>Data</th><th>Utente</th><th>Note</th><th>Azioni</th></tr></thead><tbody>{schedule_rows}</tbody></table></div>"
+        body = f"{self._msg(message)}<div class='card'><h2>Pianificazione manuale</h2><form method='post' action='/admin/scheduler/replan'><div class='grid'><label>Data<input type='date' name='date' value='{self.ntp_manager.get_current_date()}'></label><label>Utente<select name='user_id'><option value='0'>Tutti gli utenti Corem</option>{options}</select></label></div><div class='actions'><button class='alt'>Avvia pianificazione</button></div></form></div><div class='card table'><h2>Pianificazioni salvate</h2><table><thead><tr><th>Data</th><th>Utente</th><th>Note</th><th>Azioni</th></tr></thead><tbody>{schedule_rows}</tbody></table></div>"
         return self._page("Diagnostica", body, user)
 
     def _admin_page(self, user: UserProfile, message: str) -> str:
@@ -405,8 +365,7 @@ table{{width:100%;border-collapse:collapse}}th,td{{padding:12px;border-bottom:1p
         body = f"""{self._msg(message)}<div class="card hero"><h1>Admin</h1><p class="muted">Gestione utenti, notifiche e scheduler.</p></div>
 <div class="card"><h2>Notifiche ntfy</h2><form method="post" action="/admin/ntfy"><label><input type="checkbox" name="enabled" {'checked' if ntfy.enabled else ''}> Abilita supporto ntfy</label><div class="grid"><label>Server<input name="base_url" value="{self._e(ntfy.base_url)}"></label><label>Token<input name="access_token" value="{self._e(ntfy.access_token)}"></label></div><div class="actions"><button>Salva notifiche</button></div></form></div>
 <div class="card"><h2>Scheduler</h2><form method="post" action="/admin/scheduler/settings"><label><input type="checkbox" name="auto_startup_enabled" {'checked' if scheduler.auto_startup_enabled else ''}> Pianifica allo startup</label><div class="grid"><label>Ora automatica<input name="auto_time" value="{self._e(scheduler.auto_time)}"></label><label>% orario puntuale<input name="exact_badge_chance_percent" value="{scheduler.exact_badge_chance_percent}"></label><label>% offset vicino<input name="near_badge_offset_chance_percent" value="{scheduler.near_badge_offset_chance_percent}"></label></div><div class="actions"><button>Salva scheduler</button></div></form></div>
-<div class="card table"><h2>Utenti</h2><div class="actions"><a class="btn" href="/admin/user">Nuovo utente</a></div><table><thead><tr><th>ID</th><th>Username</th><th>Ruolo</th><th>Azioni</th></tr></thead><tbody>{user_rows}</tbody></table></div>
-<div class="card"><h2>Sistema</h2><div class="actions"><form method="post" action="/admin/restart"><button class="alt">Info riavvio</button></form><form method="post" action="/admin/reset-wifi"><button class="danger">Reset metadati WiFi</button></form></div></div>"""
+<div class="card table"><h2>Utenti</h2><div class="actions"><a class="btn" href="/admin/user">Nuovo utente</a></div><table><thead><tr><th>ID</th><th>Username</th><th>Ruolo</th><th>Azioni</th></tr></thead><tbody>{user_rows}</tbody></table></div>"""
         return self._page("Admin", body, user)
 
     def _admin_user_page(self, current: UserProfile, editing: UserProfile | None, message: str) -> str:
@@ -416,11 +375,6 @@ table{{width:100%;border-collapse:collapse}}th,td{{padding:12px;border-bottom:1p
 <div class="card hero"><h1>{'Modifica utente' if is_edit else 'Nuovo utente'}</h1></div><div class="split"><div class="card"><h2>Accesso web</h2><label>Username<input name="username" value="{self._e(target.username)}" required></label><label>Password<input type="password" name="password" placeholder="{'Lascia vuoto per non cambiare' if is_edit else 'Password utente'}"></label><label><input type="checkbox" name="is_admin" {'checked' if target.is_admin else ''}> Utente admin</label></div>
 <div class="card"><h2>Corem</h2><label>Username Corem<input name="corem_username" value="{self._e(target.corem_username)}"></label><label>Password Corem<input type="password" name="corem_password" value="{self._e(target.corem_password)}"></label><label>ID utente Corem<input name="corem_user_id" value="{target.corem_user_id}"></label><label><input type="checkbox" name="ntfy_enabled" {'checked' if target.ntfy_enabled else ''}> Abilita ntfy</label><label>Topic ntfy<input name="ntfy_topic" value="{self._e(target.ntfy_topic)}"></label></div></div><div class="card actions"><button name="submit_action" value="save">Salva utente</button>{'<button class="alt" name="submit_action" value="test_ntfy">Testa notifiche</button>' if is_edit else ''}<a class="btn" href="/admin">Torna ad admin</a></div></form>"""
         return self._page("Utente", body, current)
-
-    def _wifi_page(self, user: UserProfile, message: str) -> str:
-        networks = "".join(f"<option value='{self._e(ssid)}'>{self._e(ssid)}</option>" for ssid in self.wifi_manager.get_scanned_networks())
-        body = f"{self._msg(message)}<div class='card hero'><h1>Rete Linux</h1><p class='muted'>Su VM la rete e' gestita dal sistema operativo. Questa pagina salva solo metadati compatibili con il vecchio firmware.</p><div class='stats'><div class='stat'>Host/rete<b>{self._e(self.wifi_manager.get_connected_ssid())}</b></div><div class='stat'>IP<b>{self._e(self.wifi_manager.get_local_ip())}</b></div></div></div><div class='card'><h2>Metadati rete</h2><form method='post' action='/wifi/update'><div class='grid'><label>SSID<select name='ssid'>{networks}</select></label><label>SSID manuale<input name='ssid_manual'></label><label>Password<input type='password' name='password'></label></div><div class='actions'><button>Salva</button></div></form></div>"
-        return self._page("WiFi", body, user)
 
     def _find_user_by_username(self, username: str) -> UserProfile | None:
         return next((user for user in self.user_manager.get_all_users() if user.username == username), None)

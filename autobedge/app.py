@@ -30,7 +30,7 @@ def build_app(data_dir: str = "data", dry_run: bool = False, timezone: str = "Eu
     corem_api = CoremApiManager(user_manager)
     scheduler_manager = SchedulerManager(user_manager, storage, ntp_manager, corem_api, notification_manager, dry_run)
     scheduler_manager.begin()
-    web = WebServerManager(user_manager, wifi_manager, ntp_manager, scheduler_manager, notification_manager, dry_run)
+    web = WebServerManager(user_manager, ntp_manager, scheduler_manager, notification_manager, dry_run)
     app = web.create_app()
     app.config["AUTOBEDGE_SCHEDULER"] = scheduler_manager
     return app
