@@ -1,0 +1,29 @@
+{
+  "name": "Corem Badger",
+  "short_name": "Badger",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#07131f",
+  "theme_color": "#07131f",
+  "icons": [
+    {
+      "src": "/static/img/icon-152.png",
+      "sizes": "152x152",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/static/img/icon-180.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/static/img/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

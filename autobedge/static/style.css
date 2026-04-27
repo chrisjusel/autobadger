@@ -21,6 +21,15 @@ body {
   line-height: 1.45;
 }
 
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0 0 auto 0;
+  height: env(safe-area-inset-top);
+  background: #07131f;
+  z-index: 10000;
+}
+
 a {
   color: #77ffd1;
   text-decoration: none;
@@ -29,7 +38,7 @@ a {
 .wrap {
   max-width: 1160px;
   margin: 0 auto;
-  padding: 16px 16px 56px;
+  padding: calc(16px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right)) calc(56px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left));
 }
 
 .banner {
@@ -399,7 +408,7 @@ th {
 
 @media (max-width: 800px) {
   .wrap {
-    padding: 12px 12px 44px;
+    padding: calc(12px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right)) calc(44px + env(safe-area-inset-bottom)) calc(12px + env(safe-area-inset-left));
   }
 
   .nav {
