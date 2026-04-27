@@ -1,18 +1,28 @@
-# AutoBedge Python/Linux
+# AutoBadger
 
-Questa cartella contiene la migrazione Python dell'applicazione ESP32 per esecuzione su VM Linux.
+Migrazione Python/Linux dell'applicazione AutoBedge, impacchettata per Docker.
 
-## Avvio locale
+## Avvio Rapido Con Docker
+
+Prima installazione sulla VPS:
 
 ```bash
+sudo apt update
+sudo apt install -y git docker.io docker-compose-plugin
+sudo systemctl enable --now docker
+
+cd /home/ubuntu
+git clone --branch master https://github.com/chrisjusel/autobadger.git autobadger
 cd /home/ubuntu/autobadger
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-sudo python -m autobedge.app --host 0.0.0.0 --port 80 --data-dir data
+
+sudo docker compose up -d --build
 ```
 
-Apri `http://IP_VM/login`.
+Apri:
+
+```text
+http://IP_VM/login
+```
 
 Credenziali iniziali, se `data/users.json` non esiste:
 
@@ -20,9 +30,51 @@ Credenziali iniziali, se `data/users.json` non esiste:
 admin / admin123
 ```
 
-## Dati
+## Aggiornamento
 
-I file JSON sono salvati in `data/` e mantengono i nomi del firmware:
+La pipeline Docker aggiorna il codice da GitHub, preserva `data/` e `.env`, ricostruisce l'immagine e riavvia il container:
+
+```bash
+cd /
+sudo /home/ubuntu/autobadger/update_autobedge.sh
+```
+
+Default della pipeline:
+
+- repo: `https://github.com/chrisjusel/autobadger.git`
+- branch: `master`
+- directory app: `/home/ubuntu/autobadger`
+- backup dati: `/home/ubuntu/autobadger-backups`
+
+## Configurazione
+
+Il container legge `.env` dalla directory del progetto. Se manca, `update_autobedge.sh` lo crea automaticamente.
+
+Esempio `.env`:
+
+```env
+AUTOBEDGE_SECRET_KEY=metti-una-stringa-lunga-casuale
+AUTOBADGER_HTTP_PORT=80
+AUTOBEDGE_TIMEZONE=Europe/Rome
+AUTOBEDGE_DRY_RUN=0
+```
+
+Variabili principali:
+
+- `AUTOBADGER_HTTP_PORT`: porta pubblica host, default `80`
+- `AUTOBEDGE_SECRET_KEY`: chiave Flask stabile per sessioni e cookie
+- `AUTOBEDGE_TIMEZONE`: default `Europe/Rome`
+- `AUTOBEDGE_DRY_RUN`: `1` per simulare i badge senza chiamare Corem
+
+## Dati Persistenti
+
+I JSON applicativi sono montati in volume bind:
+
+```text
+/home/ubuntu/autobadger/data -> /app/data
+```
+
+File usati:
 
 - `users.json`
 - `wifi.json`
@@ -30,49 +82,38 @@ I file JSON sono salvati in `data/` e mantengono i nomi del firmware:
 - `ntfy.json`
 - `scheduler.json`
 
-Puoi copiare questi file dal filesystem LittleFS/backup del firmware nella directory `data/`.
+Puoi copiare i file esistenti nella directory:
 
-## Variabili ambiente
+```bash
+mkdir -p /home/ubuntu/autobadger/data
+cp users.json holidays.json ntfy.json scheduler.json /home/ubuntu/autobadger/data/
+```
 
-- `AUTOBEDGE_HOST`: default `0.0.0.0`
-- `AUTOBEDGE_PORT`: default `80`
-- `AUTOBEDGE_DATA_DIR`: default `data`
-- `AUTOBEDGE_TIMEZONE`: default `Europe/Rome`
-- `AUTOBEDGE_DRY_RUN`: `1` per simulare i badge senza chiamare Corem
-- `AUTOBEDGE_SECRET_KEY`: chiave Flask stabile per mantenere valide le sessioni dopo restart
+## Comandi Utili
 
-## Note di migrazione
+```bash
+cd /home/ubuntu/autobadger
+sudo docker compose ps
+sudo docker compose logs -f
+sudo docker compose restart
+sudo docker compose down
+sudo docker compose up -d --build
+```
 
-Su Linux le funzioni ESP32 WiFi, captive portal e LED sono sostituite da un layer compatibile no-op. La rete della VM va configurata con gli strumenti del sistema operativo; la pagina WiFi salva solo metadati compatibili con il vecchio formato.
+## HTTPS
 
-La porta `80` e' privilegiata su Linux: in avvio manuale serve `sudo`, oppure usa la unit systemd inclusa che concede `CAP_NET_BIND_SERVICE`.
+Per HTTPS puoi mettere Caddy, Nginx o Traefik davanti al container. In quel caso cambia `.env` per non esporre direttamente la porta `80`, per esempio:
 
-## Deploy su VPS
+```env
+AUTOBADGER_HTTP_PORT=127.0.0.1:10100
+```
 
-Directory predefinita:
+Poi configura il reverse proxy verso:
 
 ```text
-/home/ubuntu/autobadger
+http://127.0.0.1:10100
 ```
 
-Prima installazione:
+## Note
 
-```bash
-cd /home/ubuntu
-git clone --branch master https://github.com/chrisjusel/autobadger.git autobadger
-cd /home/ubuntu/autobadger
-python3 -m venv .venv
-. .venv/bin/activate
-pip install -r requirements.txt
-sudo cp systemd/autobedge.service /etc/systemd/system/autobedge.service
-sudo systemctl daemon-reload
-sudo systemctl enable autobedge
-sudo systemctl start autobedge
-```
-
-Aggiornamento:
-
-```bash
-cd /
-sudo /home/ubuntu/autobadger/update_autobedge.sh
-```
+Le funzioni ESP32 WiFi, captive portal e LED sono sostituite da un layer compatibile no-op. Su VPS la rete e' gestita dal sistema operativo o dal provider.

@@ -8,12 +8,23 @@ SERVICE_NAME="${SERVICE_NAME:-autobedge}"
 BACKUP_ROOT="${BACKUP_ROOT:-/home/ubuntu/autobadger-backups}"
 
 log() {
-  printf '[autobedge-update] %s\n' "$*"
+  printf '[autobadger-deploy] %s\n' "$*"
 }
 
 require_cmd() {
   if ! command -v "$1" >/dev/null 2>&1; then
     printf 'Comando mancante: %s\n' "$1" >&2
+    exit 1
+  fi
+}
+
+compose() {
+  if docker compose version >/dev/null 2>&1; then
+    docker compose "$@"
+  elif command -v docker-compose >/dev/null 2>&1; then
+    docker-compose "$@"
+  else
+    printf 'Docker Compose mancante. Installa docker compose plugin oppure docker-compose.\n' >&2
     exit 1
   fi
 }
@@ -24,9 +35,9 @@ if [[ "${EUID}" -ne 0 ]]; then
 fi
 
 require_cmd git
-require_cmd python3
+require_cmd docker
 
-# Avoid running pip from a deleted cwd if APP_DIR is replaced while this script is running.
+# Avoid running from a directory that may be replaced during deploy.
 cd /
 
 timestamp="$(date +%Y%m%d-%H%M%S)"
@@ -45,12 +56,12 @@ log "Branch: ${BRANCH}"
 mkdir -p "${BACKUP_ROOT}"
 
 if systemctl list-unit-files "${SERVICE_NAME}.service" >/dev/null 2>&1; then
-  log "Stop servizio ${SERVICE_NAME}"
-  systemctl stop "${SERVICE_NAME}" || true
+  log "Disabilito vecchio servizio systemd ${SERVICE_NAME} per evitare conflitti"
+  systemctl disable --now "${SERVICE_NAME}" || true
 fi
 
 if [[ -d "${APP_DIR}" ]]; then
-  log "Backup configurazione runtime in ${backup_dir}"
+  log "Backup dati runtime in ${backup_dir}"
   mkdir -p "${backup_dir}"
   [[ -d "${APP_DIR}/data" ]] && cp -a "${APP_DIR}/data" "${backup_dir}/data"
   [[ -f "${APP_DIR}/.env" ]] && cp -a "${APP_DIR}/.env" "${backup_dir}/.env"
@@ -86,24 +97,25 @@ fi
 
 cd "${APP_DIR}"
 
-log "Ricreazione virtualenv"
-rm -rf "${APP_DIR}/.venv"
-python3 -m venv "${APP_DIR}/.venv"
-
-log "Installazione dipendenze"
-"${APP_DIR}/.venv/bin/python" -m pip install --upgrade pip
-"${APP_DIR}/.venv/bin/python" -m pip install -r "${APP_DIR}/requirements.txt"
-
-log "Verifica sintassi Python"
-"${APP_DIR}/.venv/bin/python" -m compileall "${APP_DIR}/autobedge"
-
-if systemctl list-unit-files "${SERVICE_NAME}.service" >/dev/null 2>&1; then
-  log "Reload systemd e restart servizio ${SERVICE_NAME}"
-  systemctl daemon-reload
-  systemctl restart "${SERVICE_NAME}"
-  systemctl --no-pager --full status "${SERVICE_NAME}" || true
-else
-  log "Servizio ${SERVICE_NAME}.service non trovato: salto restart systemd"
+if [[ ! -f ".env" ]]; then
+  log "Creo .env con secret key e porta HTTP default"
+  secret_key="$(python3 - <<'PY'
+import secrets
+print(secrets.token_hex(32))
+PY
+)"
+  {
+    printf 'AUTOBEDGE_SECRET_KEY=%s\n' "${secret_key}"
+    printf 'AUTOBADGER_HTTP_PORT=80\n'
+    printf 'AUTOBEDGE_TIMEZONE=Europe/Rome\n'
+    printf 'AUTOBEDGE_DRY_RUN=0\n'
+  } > .env
 fi
 
-log "Aggiornamento completato"
+log "Build e avvio container Docker"
+compose up -d --build
+
+log "Stato container"
+compose ps
+
+log "Deploy completato"
