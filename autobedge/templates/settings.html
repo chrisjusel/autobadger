@@ -47,9 +47,11 @@
       <label class="check"><input type="checkbox" name="ntfy_enabled" {% if user.ntfy_enabled %}checked{% endif %}> Abilita notifiche ntfy</label>
       <label>Topic<input name="ntfy_topic" value="{{ user.ntfy_topic }}"></label>
       <div class="actions">
-        <button name="submit_action" value="save">Salva</button>
         <button class="alt" name="submit_action" value="test_ntfy">Testa notifiche</button>
       </div>
+    </div>
+    <div class="card actions">
+      <button name="submit_action" value="save">Salva impostazioni</button>
     </div>
   </form>
 {% endblock %}
