@@ -50,18 +50,18 @@ Default della pipeline:
 
 Il container legge `.env` dalla directory del progetto. Se manca, `update_autobedge.sh` lo crea automaticamente.
 
-Esempio `.env`:
+Esempio `.env` per uso con Nginx/HTTPS:
 
 ```env
 AUTOBEDGE_SECRET_KEY=metti-una-stringa-lunga-casuale
-AUTOBADGER_HTTP_PORT=80
+AUTOBADGER_HTTP_PORT=127.0.0.1:10100
 AUTOBEDGE_TIMEZONE=Europe/Rome
 AUTOBEDGE_DRY_RUN=0
 ```
 
 Variabili principali:
 
-- `AUTOBADGER_HTTP_PORT`: porta pubblica host, default `80`
+- `AUTOBADGER_HTTP_PORT`: bind host del container, consigliato `127.0.0.1:10100` dietro Nginx
 - `AUTOBEDGE_SECRET_KEY`: chiave Flask stabile per sessioni e cookie
 - `AUTOBEDGE_TIMEZONE`: default `Europe/Rome`
 - `AUTOBEDGE_DRY_RUN`: `1` per simulare i badge senza chiamare Corem
@@ -102,7 +102,7 @@ sudo docker compose up -d --build
 
 ## HTTPS
 
-Per HTTPS puoi mettere Caddy, Nginx o Traefik davanti al container. In quel caso cambia `.env` per non esporre direttamente la porta `80`, per esempio:
+Per HTTPS puoi mettere Caddy, Nginx o Traefik davanti al container. Con Nginx, il container deve ascoltare solo in locale:
 
 ```env
 AUTOBADGER_HTTP_PORT=127.0.0.1:10100
@@ -112,6 +112,19 @@ Poi configura il reverse proxy verso:
 
 ```text
 http://127.0.0.1:10100
+```
+
+La pipeline puo' anche creare/aggiornare il vhost Nginx:
+
+```bash
+cd /
+sudo NGINX_DOMAIN=badge.scientify.it /home/ubuntu/autobadger/update_autobedge.sh
+```
+
+Poi emetti o rinnova il certificato:
+
+```bash
+sudo certbot --nginx -d badge.scientify.it
 ```
 
 ## Note
