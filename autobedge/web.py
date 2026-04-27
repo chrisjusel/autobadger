@@ -3,7 +3,8 @@ from __future__ import annotations
 import html
 import os
 import secrets
-from urllib.parse import quote
+from datetime import datetime, timezone
+from urllib.parse import quote, urlencode
 
 from flask import Flask, Response, redirect, request, session, url_for
 
@@ -296,7 +297,7 @@ a{{color:#77ffd1;text-decoration:none}}.wrap{{max-width:1160px;margin:0 auto;pad
 .card{{background:linear-gradient(180deg,rgba(19,43,69,.96),rgba(12,31,49,.95));border:1px solid var(--line);border-radius:22px;padding:20px;margin-bottom:18px;box-shadow:0 18px 55px rgba(0,0,0,.28)}}
 .hero{{border-color:rgba(78,204,163,.34)}}h1,h2,h3{{margin:0 0 10px}}p{{margin:0 0 10px}}.muted{{color:var(--muted)}}.msg{{padding:14px 16px;border:1px solid rgba(78,204,163,.30);background:rgba(78,204,163,.12);border-radius:16px;margin-bottom:16px}}
 .nav{{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between}}.links{{display:flex;gap:10px;flex-wrap:wrap}}.pill,.btn,button{{display:inline-flex;align-items:center;justify-content:center;border-radius:14px;border:1px solid var(--line);padding:11px 14px;font-weight:800;min-height:44px;cursor:pointer}}
-.pill{{background:rgba(255,255,255,.05);color:var(--text)}}.btn,button{{background:linear-gradient(135deg,var(--accent),#39b28b);color:#072217}}.danger{{background:linear-gradient(135deg,#ff8989,#ff5f73)!important;color:#30090d!important}}.alt{{background:linear-gradient(135deg,#63a4ff,#3a78e0)!important;color:#071a38!important}}.iconbtn{{width:44px;padding:0;font-size:1.1rem;line-height:1}}
+.pill{{background:rgba(255,255,255,.05);color:var(--text)}}.btn,button{{background:linear-gradient(135deg,var(--accent),#39b28b);color:#072217}}.danger{{background:linear-gradient(135deg,#ff8989,#ff5f73)!important;color:#30090d!important}}.alt{{background:linear-gradient(135deg,#63a4ff,#3a78e0)!important;color:#071a38!important}}.iconbtn{{width:28px;min-height:28px;height:28px;padding:0;border-radius:8px;font-size:.9rem;line-height:1}}.inlineform{{display:inline-flex;margin:0}}
 .grid,.split,.stats{{display:grid;gap:14px}}.split{{grid-template-columns:repeat(2,minmax(0,1fr))}}.grid{{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}}.stats{{grid-template-columns:repeat(auto-fit,minmax(170px,1fr))}}
 input,select{{width:100%;min-height:48px;padding:12px;border-radius:14px;border:1px solid var(--line);background:rgba(4,15,24,.42);color:var(--text);margin-top:7px}}input[type=checkbox]{{width:18px;min-height:0;height:18px;padding:0;margin:0;border:0;background:transparent;accent-color:var(--accent);flex:0 0 auto}}label{{font-weight:800}}.check{{display:flex;align-items:center;gap:8px;width:max-content;max-width:100%;margin:8px 0}}.checkrow{{display:flex;gap:10px;flex-wrap:wrap}}.checkrow label{{padding:10px 12px;border:1px solid var(--line);border-radius:14px}}
 table{{width:100%;border-collapse:collapse}}th,td{{padding:12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}}th{{color:var(--muted);font-size:.8rem;text-transform:uppercase}}.table{{overflow:auto}}.actions{{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}}.stat{{padding:14px;border:1px solid var(--line);border-radius:18px;background:rgba(255,255,255,.04)}}.stat b{{display:block;font-size:1.35rem}}
@@ -320,7 +321,14 @@ table{{width:100%;border-collapse:collapse}}th,td{{padding:12px;border-bottom:1p
         return self._page("Login", body)
 
     def _planning_pending_page(self, user: UserProfile, message: str) -> str:
-        return self._page("Pianificazione in corso", f"<meta http-equiv='refresh' content='1'><div class='card'><h1>Aggiornamento pianificazione in corso</h1><p>{self._e(message)}</p></div>", user)
+        body = f"""<meta http-equiv="refresh" content="1">
+<div style="position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(7,19,31,.92);backdrop-filter:blur(3px)">
+<div class="card hero" style="max-width:560px;width:100%;margin:0;text-align:center">
+<h1>Aggiornamento pianificazioni</h1>
+<p class="muted">{self._e(message or 'Le pianificazioni sono in aggiornamento. Attendi il completamento.')}</p>
+</div>
+</div>"""
+        return self._page("Pianificazione in corso", body, user)
 
     def _dashboard_page(self, user: UserProfile, message: str) -> str:
         users = self.user_manager.get_all_users() if user.is_admin else [user]
@@ -331,12 +339,12 @@ table{{width:100%;border-collapse:collapse}}th,td{{padding:12px;border-bottom:1p
                 logs.append((candidate.username, entry))
         logs.sort(key=lambda row: row[1].timestamp, reverse=True)
         rows = "".join(
-            f"<tr><td>{self._fmt_date(entry.date)}</td><td>{self._e(entry.username)}</td><td>{self._e(entry.planned_at)}</td><td>{'In sede' if entry.in_office else 'Telelavoro'}</td><td>{self._schedule_cell(entry.badge_in_at, entry.skip_badge_in, entry.badge_in_executed)}</td><td>{self._schedule_cell(entry.badge_out_at, entry.skip_badge_out, entry.badge_out_executed)}</td><td>{self._e(entry.note or '-')}</td><td>{self._schedule_delete_form(entry)}</td></tr>"
+            f"<tr><td>{self._fmt_date(entry.date)}</td><td>{self._e(entry.username)}</td><td>{self._fmt_datetime(entry.planned_at)}</td><td>{'In sede' if entry.in_office else 'Telelavoro'}</td><td>{self._schedule_cell(entry.badge_in_at, entry.skip_badge_in, entry.badge_in_executed)}</td><td>{self._schedule_cell(entry.badge_out_at, entry.skip_badge_out, entry.badge_out_executed)}</td><td>{self._e(entry.note or '-')}</td><td>{self._schedule_delete_form(entry)}</td></tr>"
             for entry in schedules
             if user.is_admin or entry.user_id == user.id
         ) or "<tr><td colspan='8'>Nessuna pianificazione disponibile.</td></tr>"
         log_rows = "".join(
-            f"<tr><td>{self._e(log.timestamp)}</td><td>{self._e(username)}</td><td>{self._e(log.type)}</td><td>{'OK' if log.success else 'KO'}</td><td>{self._e(log.note)}</td></tr>"
+            f"<tr><td>{self._fmt_datetime(log.timestamp)}</td><td>{self._e(username)}</td><td>{self._e(log.type)}</td><td>{'OK' if log.success else 'KO'}</td><td>{self._e(log.note)}</td></tr>"
             for username, log in logs[:30]
         ) or "<tr><td colspan='5'>Nessun evento disponibile.</td></tr>"
         cancel = "" if user.is_admin else "<form method='post' action='/pauses/cancel-today'><button class='danger'>Skippa le pianificazioni odierne</button></form>"
@@ -359,10 +367,8 @@ table{{width:100%;border-collapse:collapse}}th,td{{padding:12px;border-bottom:1p
         return self._page("Pause", body, user)
 
     def _diagnostics_page(self, user: UserProfile, message: str) -> str:
-        schedules = self.scheduler_manager.get_schedules_snapshot()
         options = "".join(f"<option value='{candidate.id}'>{self._e(candidate.username)}</option>" for candidate in self.user_manager.get_corem_enabled_users())
-        schedule_rows = "".join(f"<tr><td>{self._fmt_date(entry.date)}</td><td>{self._e(entry.username)}</td><td>{self._e(entry.note or '-')}</td><td><form method='post' action='/admin/scheduler/delete'><input type='hidden' name='date' value='{self._e(entry.date)}'><input type='hidden' name='user_id' value='{entry.user_id}'><button class='danger'>Cancella</button></form></td></tr>" for entry in schedules) or "<tr><td colspan='4'>Nessuna pianificazione presente.</td></tr>"
-        body = f"{self._msg(message)}<div class='card'><h2>Pianificazione manuale</h2><form method='post' action='/admin/scheduler/replan'><div class='grid'><label>Data<input type='date' name='date' value='{self.ntp_manager.get_current_date()}'></label><label>Utente<select name='user_id'><option value='0'>Tutti gli utenti Corem</option>{options}</select></label></div><div class='actions'><button class='alt'>Avvia pianificazione</button></div></form></div><div class='card table'><h2>Pianificazioni salvate</h2><table><thead><tr><th>Data</th><th>Utente</th><th>Note</th><th>Azioni</th></tr></thead><tbody>{schedule_rows}</tbody></table></div>"
+        body = f"{self._msg(message)}<div class='card'><h2>Pianificazione manuale</h2><form method='post' action='/admin/scheduler/replan'><div class='grid'><label>Data<input type='date' name='date' value='{self.ntp_manager.get_current_date()}'></label><label>Utente<select name='user_id'><option value='0'>Tutti gli utenti Corem</option>{options}</select></label></div><div class='actions'><button class='alt'>Avvia pianificazione</button></div></form></div>"
         return self._page("Diagnostica", body, user)
 
     def _admin_page(self, user: UserProfile, message: str) -> str:
@@ -374,8 +380,7 @@ table{{width:100%;border-collapse:collapse}}th,td{{padding:12px;border-bottom:1p
             delete_link = "" if candidate.is_admin else f" | <a href='/admin/delete?id={candidate.id}'>Elimina</a>"
             role = "Admin" if candidate.is_admin else "User"
             user_rows += f"<tr><td>{candidate.id}</td><td>{self._e(candidate.username)}</td><td>{role}</td><td><a href='/admin/user?id={candidate.id}'>Modifica</a>{delete_link}</td></tr>"
-        body = f"""{self._msg(message)}<div class="card hero"><h1>Admin</h1><p class="muted">Gestione utenti, notifiche e scheduler.</p></div>
-<div class="card"><h2>Notifiche ntfy</h2><form method="post" action="/admin/ntfy"><label class="check"><input type="checkbox" name="enabled" {'checked' if ntfy.enabled else ''}> Abilita supporto ntfy</label><div class="grid"><label>Server<input name="base_url" value="{self._e(ntfy.base_url)}"></label><label>Topic test globale<input name="topic" value="{self._e(ntfy.topic)}"></label><label>Token<input name="access_token" value="{self._e(ntfy.access_token)}"></label></div><div class="actions"><button name="submit_action" value="save">Salva notifiche</button><button class="alt" name="submit_action" value="test_ntfy">Testa notifiche</button></div></form></div>
+        body = f"""{self._msg(message)}<div class="card"><h2>Notifiche ntfy</h2><form method="post" action="/admin/ntfy"><label class="check"><input type="checkbox" name="enabled" {'checked' if ntfy.enabled else ''}> Abilita supporto ntfy</label><div class="grid"><label>Server<input name="base_url" value="{self._e(ntfy.base_url)}"></label><label>Topic test globale<input name="topic" value="{self._e(ntfy.topic)}"></label><label>Token<input name="access_token" value="{self._e(ntfy.access_token)}"></label></div><div class="actions"><button name="submit_action" value="save">Salva notifiche</button><button class="alt" name="submit_action" value="test_ntfy">Testa notifiche</button></div></form></div>
 <div class="card"><h2>Scheduler</h2><form method="post" action="/admin/scheduler/settings"><label class="check"><input type="checkbox" name="auto_startup_enabled" {'checked' if scheduler.auto_startup_enabled else ''}> Pianifica allo startup</label><div class="grid"><label>Ora automatica<input name="auto_time" value="{self._e(scheduler.auto_time)}"></label><label>% orario puntuale<input name="exact_badge_chance_percent" value="{scheduler.exact_badge_chance_percent}"></label><label>% offset vicino<input name="near_badge_offset_chance_percent" value="{scheduler.near_badge_offset_chance_percent}"></label></div><div class="actions"><button>Salva scheduler</button></div></form></div>
 <div class="card table"><h2>Utenti</h2><div class="actions"><a class="btn" href="/admin/user">Nuovo utente</a></div><table><thead><tr><th>ID</th><th>Username</th><th>Ruolo</th><th>Azioni</th></tr></thead><tbody>{user_rows}</tbody></table></div>"""
         return self._page("Admin", body, user)
@@ -389,14 +394,15 @@ table{{width:100%;border-collapse:collapse}}th,td{{padding:12px;border-bottom:1p
         return self._page("Utente", body, current)
 
     def _schedule_delete_form(self, entry: DailyScheduleSnapshot) -> str:
-        return f"<form method='post' action='/dashboard/scheduler/delete'><input type='hidden' name='date' value='{self._e(entry.date)}'><input type='hidden' name='user_id' value='{entry.user_id}'><button class='danger iconbtn' title='Cancella'>X</button></form>"
+        return f"<form class='inlineform' method='post' action='/dashboard/scheduler/delete'><input type='hidden' name='date' value='{self._e(entry.date)}'><input type='hidden' name='user_id' value='{entry.user_id}'><button class='danger iconbtn' title='Cancella'>X</button></form>"
 
     def _find_user_by_username(self, username: str) -> UserProfile | None:
         return next((user for user in self.user_manager.get_all_users() if user.username == username), None)
 
     def _with_msg(self, endpoint: str, message: str, **values: object) -> str:
-        base = url_for(endpoint, **values)
-        return f"{base}?msg={quote(message)}"
+        params = dict(values)
+        params["msg"] = message
+        return f"{url_for(endpoint)}?{urlencode(params)}"
 
     def _msg(self, message: str) -> str:
         return f"<div class='msg'>{self._e(message)}</div>" if message else ""
@@ -423,17 +429,27 @@ table{{width:100%;border-collapse:collapse}}th,td{{padding:12px;border-bottom:1p
     def _fmt_date(value: str) -> str:
         return f"{value[8:10]}/{value[5:7]}/{value[0:4]}" if len(value) >= 10 and value[4] == "-" and value[7] == "-" else value
 
-    @staticmethod
-    def _schedule_cell(epoch: float, skipped: bool, executed: bool) -> str:
+    def _fmt_datetime(self, value: str) -> str:
+        if not value:
+            return "-"
+        text = str(value).strip()
+        if len(text) >= 19 and text[4] == "-" and text[7] == "-" and text[10] in ("T", " "):
+            try:
+                parsed = datetime.strptime(text[:19], "%Y-%m-%dT%H:%M:%S" if text[10] == "T" else "%Y-%m-%d %H:%M:%S")
+                return parsed.replace(tzinfo=timezone.utc).astimezone(self.ntp_manager.tz).strftime("%d/%m/%Y %H:%M")
+            except ValueError:
+                pass
+        if len(text) >= 10 and text[4] == "-" and text[7] == "-":
+            return self._fmt_date(text)
+        return self._e(text)
+
+    def _schedule_cell(self, epoch: float, skipped: bool, executed: bool) -> str:
         if skipped:
             return "Skip"
-        value = datetime_from_epoch(epoch)
+        value = self._fmt_epoch(epoch)
         return f"{value} (eseguito)" if executed else value
 
-
-def datetime_from_epoch(epoch: float) -> str:
-    if epoch <= 0:
-        return "-"
-    from datetime import datetime
-
-    return datetime.fromtimestamp(epoch).strftime("%d/%m/%Y %H:%M:%S")
+    def _fmt_epoch(self, epoch: float) -> str:
+        if epoch <= 0:
+            return "-"
+        return datetime.fromtimestamp(epoch, self.ntp_manager.tz).strftime("%d/%m/%Y %H:%M")

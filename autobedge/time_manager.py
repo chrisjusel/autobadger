@@ -3,7 +3,7 @@ from __future__ import annotations
 import socket
 import struct
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
 
@@ -52,7 +52,7 @@ class NTPManager:
         return self.local_datetime().strftime("%Y-%m-%d")
 
     def get_current_timestamp(self) -> str:
-        return self.local_datetime().strftime("%Y-%m-%dT%H:%M:%S%z")
+        return datetime.fromtimestamp(self.now(), timezone.utc).strftime("%Y-%m-%dT%H:%M:%S%z")
 
     def is_synced(self) -> bool:
         return self.synced

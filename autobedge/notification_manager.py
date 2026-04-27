@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import os
+from datetime import datetime
 from urllib.parse import quote
+from zoneinfo import ZoneInfo
 
 import requests
 
@@ -108,7 +111,12 @@ class NotificationManager:
     @staticmethod
     def _format_italian_datetime(value: str) -> str:
         if len(value) >= 19 and value[4] == "-" and value[7] == "-" and value[10] in ("T", " "):
-            return f"{value[8:10]}/{value[5:7]}/{value[0:4]} {value[11:19]}"
+            try:
+                parsed = datetime.strptime(value[:19], "%Y-%m-%dT%H:%M:%S" if value[10] == "T" else "%Y-%m-%d %H:%M:%S")
+                tz = ZoneInfo(os.environ.get("AUTOBEDGE_TIMEZONE", "Europe/Rome"))
+                return parsed.replace(tzinfo=ZoneInfo("UTC")).astimezone(tz).strftime("%d/%m/%Y %H:%M")
+            except ValueError:
+                return f"{value[8:10]}/{value[5:7]}/{value[0:4]} {value[11:16]}"
         if len(value) >= 10 and value[4] == "-" and value[7] == "-":
             return f"{value[8:10]}/{value[5:7]}/{value[0:4]}"
         return value
