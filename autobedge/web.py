@@ -106,6 +106,20 @@ class WebServerManager:
             user = self._require_non_admin()
             if not isinstance(user, UserProfile):
                 return user
+            submitted = UserProfile(
+                id=user.id,
+                username=request.form.get("username", ""),
+                corem_username=request.form.get("corem_username", ""),
+                corem_password=request.form.get("corem_password", ""),
+                corem_user_id=max(0, self._to_int(request.form.get("corem_user_id"), 0)),
+                ntfy_enabled=request.form.get("ntfy_enabled") == "on",
+                ntfy_topic=request.form.get("ntfy_topic", ""),
+                is_admin=False,
+            )
+            plain_password = request.form.get("password", "")
+            ok, error = self.user_manager.upsert_user(submitted, plain_password, bool(plain_password))
+            if not ok:
+                return redirect(self._with_msg("settings", error))
             office_days = [int(value) for value in request.form.getlist("office_day") if value.isdigit()]
             ok = self.user_manager.update_user_settings(
                 user.id,

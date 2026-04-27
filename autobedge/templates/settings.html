@@ -2,6 +2,19 @@
 
 {% block content %}
   <form method="post">
+    <div class="split">
+      <div class="card">
+        <h2>Accesso web</h2>
+        <label>Username<input name="username" value="{{ user.username }}" required></label>
+        <label>Password<input type="password" name="password" placeholder="Lascia vuoto per non cambiare"></label>
+      </div>
+      <div class="card">
+        <h2>Corem</h2>
+        <label>Username Corem<input name="corem_username" value="{{ user.corem_username }}"></label>
+        <label>Password Corem<input type="password" name="corem_password" value="{{ user.corem_password }}"></label>
+        <label>ID utente Corem<input name="corem_user_id" value="{{ user.corem_user_id }}"></label>
+      </div>
+    </div>
     <div class="card">
       <h2>Casa</h2>
       <div class="grid">

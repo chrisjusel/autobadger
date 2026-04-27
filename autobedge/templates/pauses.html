@@ -2,6 +2,13 @@
 
 {% block content %}
   <div class="split">
+    <div class="card pause-form-card">
+      <h2>Nuova pausa</h2>
+      <form method="post" action="{{ url_for('pauses_add') }}">
+        <label>Data<input type="date" name="date" required></label>
+        <div class="actions"><button>Aggiungi pausa</button></div>
+      </form>
+    </div>
     <div class="card table mobile-card-table">
       <h2>Pause configurate</h2>
       <table>
@@ -16,13 +23,6 @@
           {% endfor %}
         </tbody>
       </table>
-    </div>
-    <div class="card pause-form-card">
-      <h2>Nuova pausa</h2>
-      <form method="post" action="{{ url_for('pauses_add') }}">
-        <label>Data<input type="date" name="date" required></label>
-        <div class="actions"><button>Aggiungi pausa</button></div>
-      </form>
     </div>
   </div>
 {% endblock %}
