@@ -3,7 +3,7 @@ set -Eeuo pipefail
 
 REPO_URL="${REPO_URL:-https://github.com/chrisjusel/autobadger.git}"
 APP_DIR="${APP_DIR:-/opt/autobedge}"
-BRANCH="${BRANCH:-main}"
+BRANCH="${BRANCH:-master}"
 SERVICE_NAME="${SERVICE_NAME:-autobedge}"
 BACKUP_ROOT="${BACKUP_ROOT:-/opt/autobedge-backups}"
 
@@ -25,6 +25,9 @@ fi
 
 require_cmd git
 require_cmd python3
+
+# Avoid running pip from a deleted cwd if APP_DIR is replaced while this script is running.
+cd /
 
 timestamp="$(date +%Y%m%d-%H%M%S)"
 backup_dir="${BACKUP_ROOT}/${timestamp}"
@@ -50,7 +53,6 @@ if [[ -d "${APP_DIR}" ]]; then
   log "Backup configurazione runtime in ${backup_dir}"
   mkdir -p "${backup_dir}"
   [[ -d "${APP_DIR}/data" ]] && cp -a "${APP_DIR}/data" "${backup_dir}/data"
-  [[ -d "${APP_DIR}/.venv" ]] && cp -a "${APP_DIR}/.venv" "${backup_dir}/.venv"
   [[ -f "${APP_DIR}/.env" ]] && cp -a "${APP_DIR}/.env" "${backup_dir}/.env"
 fi
 
@@ -78,19 +80,15 @@ else
   mkdir -p "${APP_DIR}/data"
 fi
 
-if [[ -d "${backup_dir}/.venv" ]]; then
-  rm -rf "${APP_DIR}/.venv"
-  cp -a "${backup_dir}/.venv" "${APP_DIR}/.venv"
-fi
-
 if [[ -f "${backup_dir}/.env" ]]; then
   cp -a "${backup_dir}/.env" "${APP_DIR}/.env"
 fi
 
-if [[ ! -d "${APP_DIR}/.venv" ]]; then
-  log "Creazione virtualenv"
-  python3 -m venv "${APP_DIR}/.venv"
-fi
+cd "${APP_DIR}"
+
+log "Ricreazione virtualenv"
+rm -rf "${APP_DIR}/.venv"
+python3 -m venv "${APP_DIR}/.venv"
 
 log "Installazione dipendenze"
 "${APP_DIR}/.venv/bin/python" -m pip install --upgrade pip
