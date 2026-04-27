@@ -1,0 +1,21 @@
+[Unit]
+Description=AutoBedge Python service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/autobedge
+Environment=AUTOBEDGE_HOST=0.0.0.0
+Environment=AUTOBEDGE_PORT=80
+Environment=AUTOBEDGE_DATA_DIR=/opt/autobedge/data
+Environment=AUTOBEDGE_TIMEZONE=Europe/Rome
+Environment=AUTOBEDGE_SECRET_KEY=change-this-secret
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+ExecStart=/opt/autobedge/.venv/bin/python -m autobedge.app
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
