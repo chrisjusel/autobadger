@@ -50,7 +50,7 @@
             </td>
           </tr>
         {% else %}
-          <tr><td colspan="8">Nessuna pianificazione disponibile.</td></tr>
+          <tr class="empty-row"><td colspan="8">Nessuna pianificazione disponibile.</td></tr>
         {% endfor %}
       </tbody>
     </table>
@@ -77,7 +77,7 @@
             <td data-label="Note">{{ row.entry.note }}</td>
           </tr>
         {% else %}
-          <tr><td colspan="5">Nessun evento disponibile.</td></tr>
+          <tr class="empty-row"><td colspan="5">Nessun evento disponibile.</td></tr>
         {% endfor %}
       </tbody>
     </table>

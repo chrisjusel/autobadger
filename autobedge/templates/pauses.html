@@ -12,12 +12,12 @@
               <td data-label="Azioni"><a class="btn danger" href="{{ url_for('pauses_delete', date=pause) }}">Rimuovi</a></td>
             </tr>
           {% else %}
-            <tr><td colspan="2">Nessuna pausa configurata.</td></tr>
+            <tr class="empty-row"><td colspan="2">Nessuna pausa configurata.</td></tr>
           {% endfor %}
         </tbody>
       </table>
     </div>
-    <div class="card">
+    <div class="card pause-form-card">
       <h2>Nuova pausa</h2>
       <form method="post" action="{{ url_for('pauses_add') }}">
         <label>Data<input type="date" name="date" required></label>

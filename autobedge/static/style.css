@@ -392,6 +392,11 @@ th {
   text-align: center;
 }
 
+.pause-form-card form,
+.pause-form-card label {
+  min-width: 0;
+}
+
 @media (max-width: 800px) {
   .wrap {
     padding: 12px 12px 44px;
@@ -446,6 +451,14 @@ th {
   .card {
     padding: 16px;
     border-radius: 18px;
+  }
+
+  .pause-form-card {
+    overflow: hidden;
+  }
+
+  .pause-form-card input {
+    max-width: 100%;
   }
 
   table {
@@ -519,6 +532,7 @@ th {
   .planning-actions {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-bottom: 14px;
   }
 
   .planning-actions form {
@@ -528,5 +542,24 @@ th {
   .planning-actions button {
     min-width: 0;
     padding-inline: 8px;
+  }
+
+  .schedule-table tr.empty-row,
+  .mobile-card-table tr.empty-row {
+    display: block;
+    text-align: center;
+  }
+
+  .schedule-table tr.empty-row td,
+  .mobile-card-table tr.empty-row td {
+    display: block;
+    padding: 12px 0;
+    border-bottom: 0;
+    text-align: center;
+  }
+
+  .schedule-table tr.empty-row td::before,
+  .mobile-card-table tr.empty-row td::before {
+    content: none;
   }
 }
