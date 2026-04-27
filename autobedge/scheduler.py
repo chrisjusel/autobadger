@@ -40,7 +40,7 @@ class SchedulerManager:
         self._planning_status = PlanningStatusSnapshot()
         self._holidays: list[str] = []
         self._schedules: list[DailyScheduleSnapshot] = []
-        self._pending_request: tuple[str, int] | None = None
+        self._pending_requests: list[tuple[str, int]] = []
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
 
@@ -100,7 +100,9 @@ class SchedulerManager:
         if not valid:
             return False, message
         with self._lock:
-            self._pending_request = (date, user_id)
+            request = (date, user_id)
+            if request not in self._pending_requests:
+                self._pending_requests.append(request)
             self._planning_status = PlanningStatusSnapshot(True, False, f"Pianificazione in corso per {self._format_display_date(date)}.", self.ntp_manager.get_current_timestamp())
         return True, "Pianificazione messa in coda."
 
@@ -164,12 +166,23 @@ class SchedulerManager:
 
     def _process_pending_planning_requests(self) -> None:
         with self._lock:
-            request = self._pending_request
-            self._pending_request = None
-        if request is None:
+            requests = list(self._pending_requests)
+            self._pending_requests.clear()
+        if not requests:
             return
-        ok, message = self._execute_planning_for_date(request[0], request[1])
-        self._set_planning_status(False, ok, message)
+        ok = True
+        message = ""
+        for date, user_id in requests:
+            self._set_planning_status(True, False, f"Pianificazione in corso per {self._format_display_date(date)}.")
+            ok, message = self._execute_planning_for_date(date, user_id)
+            if not ok:
+                break
+        with self._lock:
+            has_more = bool(self._pending_requests)
+        if has_more:
+            self._set_planning_status(True, ok, message)
+        else:
+            self._set_planning_status(False, ok, message)
 
     def _validate_planning_request(self, date: str, user_id: int) -> tuple[bool, str]:
         if len(date) != 10:
@@ -382,4 +395,3 @@ class SchedulerManager:
     @staticmethod
     def _format_display_date(date: str) -> str:
         return f"{date[8:10]}/{date[5:7]}/{date[0:4]}" if len(date) == 10 and date[4] == "-" and date[7] == "-" else date
-

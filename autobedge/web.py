@@ -37,6 +37,20 @@ class WebServerManager:
         return app
 
     def _configure_routes(self, app: Flask) -> None:
+        @app.get("/favicon.svg")
+        def favicon_svg() -> Response:
+            svg = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+<rect width="64" height="64" rx="14" fill="#07131f"/>
+<path d="M18 14h28a6 6 0 0 1 6 6v24a6 6 0 0 1-6 6H18a6 6 0 0 1-6-6V20a6 6 0 0 1 6-6Z" fill="#10243a" stroke="#4ecca3" stroke-width="3"/>
+<path d="M22 24h20M22 34h12" stroke="#f7fbff" stroke-width="4" stroke-linecap="round"/>
+<circle cx="45" cy="38" r="6" fill="#4ecca3"/>
+</svg>"""
+            return Response(svg, mimetype="image/svg+xml")
+
+        @app.get("/favicon.ico")
+        def favicon_ico() -> Response:
+            return redirect(url_for("favicon_svg"))
+
         @app.get("/")
         def root() -> Response | str:
             if self._current_user():
@@ -290,14 +304,14 @@ class WebServerManager:
         nav = self._navigation(user) if user else ""
         banner = "<div class='banner'>MODALITA' DRY RUN ATTIVA</div>" if self.dry_run else ""
         return f"""<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{self._e(title)}</title><style>
+<title>{self._e(title)}</title><link rel="icon" type="image/svg+xml" href="/favicon.svg"><style>
 :root{{--bg:#07131f;--panel:#10243a;--muted:#a9bed5;--text:#f7fbff;--accent:#4ecca3;--danger:#ff6b6b;--line:rgba(255,255,255,.12)}}
 *{{box-sizing:border-box}}body{{margin:0;min-height:100vh;color:var(--text);font-family:Trebuchet MS,Segoe UI,sans-serif;background:radial-gradient(circle at top left,rgba(78,204,163,.18),transparent 30%),linear-gradient(180deg,#081421,#07111d);line-height:1.45}}
 a{{color:#77ffd1;text-decoration:none}}.wrap{{max-width:1160px;margin:0 auto;padding:16px 16px 56px}}.banner{{background:#b42323;color:white;text-align:center;font-weight:800;padding:12px}}
 .card{{background:linear-gradient(180deg,rgba(19,43,69,.96),rgba(12,31,49,.95));border:1px solid var(--line);border-radius:22px;padding:20px;margin-bottom:18px;box-shadow:0 18px 55px rgba(0,0,0,.28)}}
 .hero{{border-color:rgba(78,204,163,.34)}}h1,h2,h3{{margin:0 0 10px}}p{{margin:0 0 10px}}.muted{{color:var(--muted)}}.msg{{padding:14px 16px;border:1px solid rgba(78,204,163,.30);background:rgba(78,204,163,.12);border-radius:16px;margin-bottom:16px}}
-.nav{{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between}}.links{{display:flex;gap:10px;flex-wrap:wrap}}.pill,.btn,button{{display:inline-flex;align-items:center;justify-content:center;border-radius:14px;border:1px solid var(--line);padding:11px 14px;font-weight:800;min-height:44px;cursor:pointer}}
-.pill{{background:rgba(255,255,255,.05);color:var(--text)}}.btn,button{{background:linear-gradient(135deg,var(--accent),#39b28b);color:#072217}}.danger{{background:linear-gradient(135deg,#ff8989,#ff5f73)!important;color:#30090d!important}}.alt{{background:linear-gradient(135deg,#63a4ff,#3a78e0)!important;color:#071a38!important}}.iconbtn{{width:28px;min-height:28px;height:28px;padding:0;border-radius:8px;font-size:.9rem;line-height:1}}.inlineform{{display:inline-flex;margin:0}}
+.nav{{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between}}.brand{{display:grid;gap:8px}}.logo{{display:inline-grid;gap:0;line-height:1;text-transform:uppercase;letter-spacing:0}}.logo-main{{font-weight:900;font-size:1.08rem;color:#f7fbff}}.logo-sub{{margin-top:3px;font-size:.64rem;font-weight:800;color:#4ecca3}}.chips{{display:flex;gap:8px;flex-wrap:wrap}}.chip{{display:inline-flex;align-items:center;border-radius:999px;padding:6px 10px;font-size:.82rem;font-weight:800;border:1px solid var(--line)}}.chip-user{{background:rgba(78,204,163,.18);color:#baffea;border-color:rgba(78,204,163,.42)}}.chip-role{{background:rgba(99,164,255,.18);color:#cfe2ff;border-color:rgba(99,164,255,.42)}}.links{{display:flex;gap:10px;flex-wrap:wrap}}.pill,.btn,button{{display:inline-flex;align-items:center;justify-content:center;border-radius:14px;border:1px solid var(--line);padding:11px 14px;font-weight:800;min-height:44px;cursor:pointer}}
+.pill{{background:rgba(255,255,255,.05);color:var(--text)}}.pill.active{{background:rgba(78,204,163,.22);border-color:rgba(78,204,163,.65);color:#baffea;box-shadow:inset 0 0 0 1px rgba(78,204,163,.18)}}.btn,button{{background:linear-gradient(135deg,var(--accent),#39b28b);color:#072217}}.danger{{background:linear-gradient(135deg,#ff8989,#ff5f73)!important;color:#30090d!important}}.alt{{background:linear-gradient(135deg,#63a4ff,#3a78e0)!important;color:#071a38!important}}.iconbtn{{width:28px;min-height:28px;height:28px;padding:0;border-radius:8px;font-size:.9rem;line-height:1}}.inlineform{{display:inline-flex;margin:0}}
 .grid,.split,.stats{{display:grid;gap:14px}}.split{{grid-template-columns:repeat(2,minmax(0,1fr))}}.grid{{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}}.stats{{grid-template-columns:repeat(auto-fit,minmax(170px,1fr))}}
 input,select{{width:100%;min-height:48px;padding:12px;border-radius:14px;border:1px solid var(--line);background:rgba(4,15,24,.42);color:var(--text);margin-top:7px}}input[type=checkbox]{{width:18px;min-height:0;height:18px;padding:0;margin:0;border:0;background:transparent;accent-color:var(--accent);flex:0 0 auto}}label{{font-weight:800}}.check{{display:flex;align-items:center;gap:8px;width:max-content;max-width:100%;margin:8px 0}}.checkrow{{display:flex;gap:10px;flex-wrap:wrap}}.checkrow label{{padding:10px 12px;border:1px solid var(--line);border-radius:14px}}
 table{{width:100%;border-collapse:collapse}}th,td{{padding:12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}}th{{color:var(--muted);font-size:.8rem;text-transform:uppercase}}.table{{overflow:auto}}.actions{{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}}.stat{{padding:14px;border:1px solid var(--line);border-radius:18px;background:rgba(255,255,255,.04)}}.stat b{{display:block;font-size:1.35rem}}
@@ -307,13 +321,19 @@ table{{width:100%;border-collapse:collapse}}th,td{{padding:12px;border-bottom:1p
     def _navigation(self, user: UserProfile | None) -> str:
         if user is None:
             return ""
-        links = ["<a class='pill' href='/dashboard'>Dashboard</a>"]
+        current_path = request.path
+        links = [self._nav_link("/dashboard", "Dashboard", current_path)]
         if not user.is_admin:
-            links.extend(["<a class='pill' href='/settings'>Impostazioni</a>", "<a class='pill' href='/pauses'>Pause</a>"])
+            links.extend([self._nav_link("/settings", "Impostazioni", current_path), self._nav_link("/pauses", "Pause", current_path)])
         if user.is_admin:
-            links.extend(["<a class='pill' href='/admin'>Admin</a>", "<a class='pill' href='/diagnostics'>Diagnostica</a>"])
-        links.append("<a class='pill' href='/logout'>Logout</a>")
-        return f"<div class='card nav'><div><b>Corem Badger</b><div class='muted'>{self._e(user.username)} - {'Admin' if user.is_admin else 'Utente'}</div></div><div class='links'>{''.join(links)}</div></div>"
+            links.extend([self._nav_link("/admin", "Admin", current_path), self._nav_link("/diagnostics", "Diagnostica", current_path)])
+        links.append(self._nav_link("/logout", "Logout", current_path))
+        logo = "<div class='logo'><span class='logo-main'>corem barger</span><span class='logo-sub'>py version</span></div>"
+        return f"<div class='card nav'><div class='brand'>{logo}<div class='chips'><span class='chip chip-user'>{self._e(user.username)}</span><span class='chip chip-role'>{'Admin' if user.is_admin else 'Utente'}</span></div></div><div class='links'>{''.join(links)}</div></div>"
+
+    def _nav_link(self, href: str, label: str, current_path: str) -> str:
+        active = " active" if current_path == href or (href != "/dashboard" and current_path.startswith(f"{href}/")) else ""
+        return f"<a class='pill{active}' href='{href}'>{self._e(label)}</a>"
 
     def _login_page(self, message: str) -> str:
         msg = self._msg(message)
@@ -348,14 +368,16 @@ table{{width:100%;border-collapse:collapse}}th,td{{padding:12px;border-bottom:1p
             for username, log in logs[:30]
         ) or "<tr><td colspan='5'>Nessun evento disponibile.</td></tr>"
         cancel = "" if user.is_admin else "<form method='post' action='/pauses/cancel-today'><button class='danger'>Skippa le pianificazioni odierne</button></form>"
-        body = f"{self._msg(message)}<div class='card hero'><h1>Dashboard</h1><p class='muted'>Pianificazioni e ultimi eventi badge.</p><div class='actions'><form method='post' action='/dashboard/scheduler/replan'><button class='alt'>Aggiorna pianificazione</button></form>{cancel}</div></div><div class='card table'><h2>Pianificazioni presenti</h2><table><thead><tr><th>Data</th><th>Utente</th><th>Elaborata</th><th>Modalita</th><th>Badge IN</th><th>Badge OUT</th><th>Note</th><th>Azioni</th></tr></thead><tbody>{rows}</tbody></table></div><div class='card table'><h2>Ultimi 30 eventi</h2><table><thead><tr><th>Data/Ora</th><th>Utente</th><th>Tipo</th><th>Esito</th><th>Note</th></tr></thead><tbody>{log_rows}</tbody></table></div>"
+        planning_actions = f"<div class='actions'><form method='post' action='/dashboard/scheduler/replan'><button class='alt'>Aggiorna pianificazione</button></form>{cancel}</div>"
+        last_planned_at = max((entry.planned_at for entry in schedules if entry.planned_at and (user.is_admin or entry.user_id == user.id)), default="")
+        planning_meta = f"<p class='muted'>Ultima pianificazione: {self._fmt_datetime(last_planned_at)}</p>"
+        body = f"{self._msg(message)}<div class='card table'><h2>Pianificazioni presenti</h2>{planning_meta}{planning_actions}<table><thead><tr><th>Data</th><th>Utente</th><th>Elaborata</th><th>Modalita</th><th>Badge IN</th><th>Badge OUT</th><th>Note</th><th>Azioni</th></tr></thead><tbody>{rows}</tbody></table></div><div class='card table'><h2>Ultimi 30 eventi</h2><table><thead><tr><th>Data/Ora</th><th>Utente</th><th>Tipo</th><th>Esito</th><th>Note</th></tr></thead><tbody>{log_rows}</tbody></table></div>"
         return self._page("Dashboard", body, user)
 
     def _settings_page(self, user: UserProfile, message: str) -> str:
         day_labels = ["Lun", "Mar", "Mer", "Gio", "Ven"]
         checks = "".join(f"<label class='check'><input type='checkbox' name='office_day' value='{idx}' {'checked' if idx in user.office_days else ''}> {label}</label>" for idx, label in enumerate(day_labels))
-        body = f"""{self._msg(message)}<form method="post"><div class="card hero"><h1>Impostazioni utente</h1></div>
-<div class="card"><h2>Casa</h2><div class="grid"><label>Latitudine casa<input name="home_lat" value="{user.home_lat:.6f}"></label><label>Longitudine casa<input name="home_lon" value="{user.home_lon:.6f}"></label><label>Accuratezza casa<input name="home_accuracy" value="{user.home_accuracy}"></label></div></div>
+        body = f"""{self._msg(message)}<form method="post"><div class="card"><h2>Casa</h2><div class="grid"><label>Latitudine casa<input name="home_lat" value="{user.home_lat:.6f}"></label><label>Longitudine casa<input name="home_lon" value="{user.home_lon:.6f}"></label><label>Accuratezza casa<input name="home_accuracy" value="{user.home_accuracy}"></label></div></div>
 <div class="card"><h2>Ufficio</h2><div class="grid"><label>Latitudine sede<input name="office_lat" value="{user.office_lat:.6f}"></label><label>Longitudine sede<input name="office_lon" value="{user.office_lon:.6f}"></label><label>Accuratezza sede<input name="office_accuracy" value="{user.office_accuracy}"></label></div></div>
 <div class="card"><h2>Giorni in ufficio</h2><div class="checkrow">{checks}</div></div>
 <div class="card"><h2>Notifiche ntfy</h2><label class="check"><input type="checkbox" name="ntfy_enabled" {'checked' if user.ntfy_enabled else ''}> Abilita notifiche ntfy</label><label>Topic<input name="ntfy_topic" value="{self._e(user.ntfy_topic)}"></label><div class="actions"><button name="submit_action" value="save">Salva</button><button class="alt" name="submit_action" value="test_ntfy">Testa notifiche</button></div></div></form>"""
@@ -363,7 +385,7 @@ table{{width:100%;border-collapse:collapse}}th,td{{padding:12px;border-bottom:1p
 
     def _pauses_page(self, user: UserProfile, message: str) -> str:
         pauses = "".join(f"<tr><td>{self._fmt_date(pause)}</td><td><a class='btn danger' href='/pauses/delete?date={quote(pause)}'>Rimuovi</a></td></tr>" for pause in user.scheduled_pauses) or "<tr><td colspan='2'>Nessuna pausa configurata.</td></tr>"
-        body = f"{self._msg(message)}<div class='card hero'><h1>Pause</h1><p class='muted'>Date in cui lo scheduler salta l'automazione per il tuo profilo.</p></div><div class='split'><div class='card table'><h2>Pause configurate</h2><table><tbody>{pauses}</tbody></table></div><div class='card'><h2>Nuova pausa</h2><form method='post' action='/pauses/add'><label>Data<input type='date' name='date' required></label><div class='actions'><button>Aggiungi pausa</button></div></form></div></div>"
+        body = f"{self._msg(message)}<div class='split'><div class='card table'><h2>Pause configurate</h2><table><tbody>{pauses}</tbody></table></div><div class='card'><h2>Nuova pausa</h2><form method='post' action='/pauses/add'><label>Data<input type='date' name='date' required></label><div class='actions'><button>Aggiungi pausa</button></div></form></div></div>"
         return self._page("Pause", body, user)
 
     def _diagnostics_page(self, user: UserProfile, message: str) -> str:
