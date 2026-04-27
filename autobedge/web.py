@@ -38,7 +38,7 @@ class WebServerManager:
     def _configure_routes(self, app: Flask) -> None:
         @app.get("/favicon.ico")
         def favicon_ico() -> Response:
-            return redirect(url_for("static", filename="favicon.svg"))
+            return redirect(url_for("static", filename="img/favicon-32x32.png"))
 
         @app.get("/")
         def root() -> Response | str:

@@ -4,7 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>{{ title }}</title>
-  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+  <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='img/favicon-16x16.png') }}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='img/favicon-32x32.png') }}">
+  <link rel="apple-touch-icon" sizes="152x152" href="{{ url_for('static', filename='img/icon-152.png') }}">
+  <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='img/icon-180.png') }}">
+  <link rel="apple-touch-icon" sizes="192x192" href="{{ url_for('static', filename='img/icon-192.png') }}">
+  <meta name="apple-mobile-web-app-title" content="Corem Badger">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   {% block head %}{% endblock %}
 </head>
@@ -24,6 +29,11 @@
             <span class="chip chip-user">{{ user.username }}</span>
             <span class="chip chip-role">{{ "Admin" if user.is_admin else "Utente" }}</span>
           </div>
+        </div>
+        <div class="links desktop-links">
+          {% for link in nav_links %}
+            <a class="pill{% if link.active %} active{% endif %}" href="{{ link.href }}">{{ link.label }}</a>
+          {% endfor %}
         </div>
         <details class="nav-menu">
           <summary class="hamburger" aria-label="Menu"><span></span></summary>

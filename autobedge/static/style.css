@@ -138,7 +138,7 @@ p {
 }
 
 .nav-menu {
-  display: block;
+  display: none;
 }
 
 .links {
@@ -400,7 +400,12 @@ th {
     max-width: calc(100% - 58px);
   }
 
+  .desktop-links {
+    display: none;
+  }
+
   .nav-menu {
+    display: block;
     flex: 0 0 44px;
   }
 
