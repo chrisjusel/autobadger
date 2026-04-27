@@ -7,7 +7,7 @@ from urllib.parse import quote
 
 from flask import Flask, Response, redirect, request, session, url_for
 
-from .models import NtfySettings, SchedulerSettings, UserProfile
+from .models import DailyScheduleSnapshot, NtfySettings, SchedulerSettings, UserProfile
 from .notification_manager import NotificationManager
 from .scheduler import SchedulerManager
 from .time_manager import NTPManager
@@ -80,6 +80,15 @@ class WebServerManager:
             date = self.ntp_manager.get_current_date()
             ok, message = self.scheduler_manager.trigger_planning_for_date(date, 0 if user.is_admin else user.id)
             return redirect(url_for("dashboard") if ok and message == "Pianificazione messa in coda." else self._with_msg("dashboard", message))
+
+        @app.post("/dashboard/scheduler/delete")
+        def dashboard_scheduler_delete() -> Response:
+            user = self._require_auth()
+            if not isinstance(user, UserProfile):
+                return user
+            user_id = self._to_int(request.form.get("user_id"), 0) if user.is_admin else user.id
+            _, message = self.scheduler_manager.cancel_planning_for_date(request.form.get("date", ""), user_id)
+            return redirect(self._with_msg("dashboard", message))
 
         @app.get("/settings")
         def settings() -> str | Response:
@@ -229,8 +238,11 @@ class WebServerManager:
             user = self._require_admin()
             if not isinstance(user, UserProfile):
                 return user
-            settings = NtfySettings(enabled=request.form.get("enabled") == "on", base_url=request.form.get("base_url", ""), topic="", access_token=request.form.get("access_token", ""))
+            settings = NtfySettings(enabled=request.form.get("enabled") == "on", base_url=request.form.get("base_url", ""), topic=request.form.get("topic", ""), access_token=request.form.get("access_token", ""))
             ok, error = self.notification_manager.update_settings(settings)
+            if ok and request.form.get("submit_action") == "test_ntfy":
+                test_ok, test_error = self.notification_manager.send_test_notification(user.username)
+                return redirect(self._with_msg("admin", "Notifica ntfy globale inviata" if test_ok else test_error))
             return redirect(self._with_msg("admin", "Configurazione ntfy salvata" if ok else error))
 
         @app.post("/admin/scheduler/settings")
@@ -284,9 +296,9 @@ a{{color:#77ffd1;text-decoration:none}}.wrap{{max-width:1160px;margin:0 auto;pad
 .card{{background:linear-gradient(180deg,rgba(19,43,69,.96),rgba(12,31,49,.95));border:1px solid var(--line);border-radius:22px;padding:20px;margin-bottom:18px;box-shadow:0 18px 55px rgba(0,0,0,.28)}}
 .hero{{border-color:rgba(78,204,163,.34)}}h1,h2,h3{{margin:0 0 10px}}p{{margin:0 0 10px}}.muted{{color:var(--muted)}}.msg{{padding:14px 16px;border:1px solid rgba(78,204,163,.30);background:rgba(78,204,163,.12);border-radius:16px;margin-bottom:16px}}
 .nav{{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between}}.links{{display:flex;gap:10px;flex-wrap:wrap}}.pill,.btn,button{{display:inline-flex;align-items:center;justify-content:center;border-radius:14px;border:1px solid var(--line);padding:11px 14px;font-weight:800;min-height:44px;cursor:pointer}}
-.pill{{background:rgba(255,255,255,.05);color:var(--text)}}.btn,button{{background:linear-gradient(135deg,var(--accent),#39b28b);color:#072217}}.danger{{background:linear-gradient(135deg,#ff8989,#ff5f73)!important;color:#30090d!important}}.alt{{background:linear-gradient(135deg,#63a4ff,#3a78e0)!important;color:#071a38!important}}
+.pill{{background:rgba(255,255,255,.05);color:var(--text)}}.btn,button{{background:linear-gradient(135deg,var(--accent),#39b28b);color:#072217}}.danger{{background:linear-gradient(135deg,#ff8989,#ff5f73)!important;color:#30090d!important}}.alt{{background:linear-gradient(135deg,#63a4ff,#3a78e0)!important;color:#071a38!important}}.iconbtn{{width:44px;padding:0;font-size:1.1rem;line-height:1}}
 .grid,.split,.stats{{display:grid;gap:14px}}.split{{grid-template-columns:repeat(2,minmax(0,1fr))}}.grid{{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}}.stats{{grid-template-columns:repeat(auto-fit,minmax(170px,1fr))}}
-input,select{{width:100%;min-height:48px;padding:12px;border-radius:14px;border:1px solid var(--line);background:rgba(4,15,24,.42);color:var(--text);margin-top:7px}}label{{font-weight:800}}.checkrow{{display:flex;gap:10px;flex-wrap:wrap}}.checkrow label{{padding:10px 12px;border:1px solid var(--line);border-radius:14px}}.checkrow input{{width:auto;min-height:auto}}
+input,select{{width:100%;min-height:48px;padding:12px;border-radius:14px;border:1px solid var(--line);background:rgba(4,15,24,.42);color:var(--text);margin-top:7px}}input[type=checkbox]{{width:18px;min-height:0;height:18px;padding:0;margin:0;border:0;background:transparent;accent-color:var(--accent);flex:0 0 auto}}label{{font-weight:800}}.check{{display:flex;align-items:center;gap:8px;width:max-content;max-width:100%;margin:8px 0}}.checkrow{{display:flex;gap:10px;flex-wrap:wrap}}.checkrow label{{padding:10px 12px;border:1px solid var(--line);border-radius:14px}}
 table{{width:100%;border-collapse:collapse}}th,td{{padding:12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}}th{{color:var(--muted);font-size:.8rem;text-transform:uppercase}}.table{{overflow:auto}}.actions{{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}}.stat{{padding:14px;border:1px solid var(--line);border-radius:18px;background:rgba(255,255,255,.04)}}.stat b{{display:block;font-size:1.35rem}}
 @media(max-width:800px){{.split{{grid-template-columns:1fr}}.links{{display:grid;grid-template-columns:1fr 1fr;width:100%}}.pill,.btn,button{{width:100%}}}}
 </style></head><body>{banner}<div class="wrap">{nav}{body}</div></body></html>"""
@@ -319,26 +331,26 @@ table{{width:100%;border-collapse:collapse}}th,td{{padding:12px;border-bottom:1p
                 logs.append((candidate.username, entry))
         logs.sort(key=lambda row: row[1].timestamp, reverse=True)
         rows = "".join(
-            f"<tr><td>{self._fmt_date(entry.date)}</td><td>{self._e(entry.username)}</td><td>{self._e(entry.planned_at)}</td><td>{'In sede' if entry.in_office else 'Telelavoro'}</td><td>{self._schedule_cell(entry.badge_in_at, entry.skip_badge_in, entry.badge_in_executed)}</td><td>{self._schedule_cell(entry.badge_out_at, entry.skip_badge_out, entry.badge_out_executed)}</td><td>{self._e(entry.note or '-')}</td></tr>"
+            f"<tr><td>{self._fmt_date(entry.date)}</td><td>{self._e(entry.username)}</td><td>{self._e(entry.planned_at)}</td><td>{'In sede' if entry.in_office else 'Telelavoro'}</td><td>{self._schedule_cell(entry.badge_in_at, entry.skip_badge_in, entry.badge_in_executed)}</td><td>{self._schedule_cell(entry.badge_out_at, entry.skip_badge_out, entry.badge_out_executed)}</td><td>{self._e(entry.note or '-')}</td><td>{self._schedule_delete_form(entry)}</td></tr>"
             for entry in schedules
             if user.is_admin or entry.user_id == user.id
-        ) or "<tr><td colspan='7'>Nessuna pianificazione disponibile.</td></tr>"
+        ) or "<tr><td colspan='8'>Nessuna pianificazione disponibile.</td></tr>"
         log_rows = "".join(
             f"<tr><td>{self._e(log.timestamp)}</td><td>{self._e(username)}</td><td>{self._e(log.type)}</td><td>{'OK' if log.success else 'KO'}</td><td>{self._e(log.note)}</td></tr>"
             for username, log in logs[:30]
         ) or "<tr><td colspan='5'>Nessun evento disponibile.</td></tr>"
         cancel = "" if user.is_admin else "<form method='post' action='/pauses/cancel-today'><button class='danger'>Skippa le pianificazioni odierne</button></form>"
-        body = f"{self._msg(message)}<div class='card hero'><h1>Dashboard</h1><p class='muted'>Pianificazioni e ultimi eventi badge.</p><div class='actions'><form method='post' action='/dashboard/scheduler/replan'><button class='alt'>Aggiorna pianificazione</button></form>{cancel}</div></div><div class='card table'><h2>Pianificazioni presenti</h2><table><thead><tr><th>Data</th><th>Utente</th><th>Elaborata</th><th>Modalita</th><th>Badge IN</th><th>Badge OUT</th><th>Note</th></tr></thead><tbody>{rows}</tbody></table></div><div class='card table'><h2>Ultimi 30 eventi</h2><table><thead><tr><th>Data/Ora</th><th>Utente</th><th>Tipo</th><th>Esito</th><th>Note</th></tr></thead><tbody>{log_rows}</tbody></table></div>"
+        body = f"{self._msg(message)}<div class='card hero'><h1>Dashboard</h1><p class='muted'>Pianificazioni e ultimi eventi badge.</p><div class='actions'><form method='post' action='/dashboard/scheduler/replan'><button class='alt'>Aggiorna pianificazione</button></form>{cancel}</div></div><div class='card table'><h2>Pianificazioni presenti</h2><table><thead><tr><th>Data</th><th>Utente</th><th>Elaborata</th><th>Modalita</th><th>Badge IN</th><th>Badge OUT</th><th>Note</th><th>Azioni</th></tr></thead><tbody>{rows}</tbody></table></div><div class='card table'><h2>Ultimi 30 eventi</h2><table><thead><tr><th>Data/Ora</th><th>Utente</th><th>Tipo</th><th>Esito</th><th>Note</th></tr></thead><tbody>{log_rows}</tbody></table></div>"
         return self._page("Dashboard", body, user)
 
     def _settings_page(self, user: UserProfile, message: str) -> str:
         day_labels = ["Lun", "Mar", "Mer", "Gio", "Ven"]
-        checks = "".join(f"<label><input type='checkbox' name='office_day' value='{idx}' {'checked' if idx in user.office_days else ''}> {label}</label>" for idx, label in enumerate(day_labels))
+        checks = "".join(f"<label class='check'><input type='checkbox' name='office_day' value='{idx}' {'checked' if idx in user.office_days else ''}> {label}</label>" for idx, label in enumerate(day_labels))
         body = f"""{self._msg(message)}<form method="post"><div class="card hero"><h1>Impostazioni utente</h1></div>
 <div class="card"><h2>Casa</h2><div class="grid"><label>Latitudine casa<input name="home_lat" value="{user.home_lat:.6f}"></label><label>Longitudine casa<input name="home_lon" value="{user.home_lon:.6f}"></label><label>Accuratezza casa<input name="home_accuracy" value="{user.home_accuracy}"></label></div></div>
 <div class="card"><h2>Ufficio</h2><div class="grid"><label>Latitudine sede<input name="office_lat" value="{user.office_lat:.6f}"></label><label>Longitudine sede<input name="office_lon" value="{user.office_lon:.6f}"></label><label>Accuratezza sede<input name="office_accuracy" value="{user.office_accuracy}"></label></div></div>
 <div class="card"><h2>Giorni in ufficio</h2><div class="checkrow">{checks}</div></div>
-<div class="card"><h2>Notifiche ntfy</h2><label><input type="checkbox" name="ntfy_enabled" {'checked' if user.ntfy_enabled else ''}> Abilita notifiche ntfy</label><label>Topic<input name="ntfy_topic" value="{self._e(user.ntfy_topic)}"></label><div class="actions"><button name="submit_action" value="save">Salva</button><button class="alt" name="submit_action" value="test_ntfy">Testa notifiche</button></div></div></form>"""
+<div class="card"><h2>Notifiche ntfy</h2><label class="check"><input type="checkbox" name="ntfy_enabled" {'checked' if user.ntfy_enabled else ''}> Abilita notifiche ntfy</label><label>Topic<input name="ntfy_topic" value="{self._e(user.ntfy_topic)}"></label><div class="actions"><button name="submit_action" value="save">Salva</button><button class="alt" name="submit_action" value="test_ntfy">Testa notifiche</button></div></div></form>"""
         return self._page("Impostazioni", body, user)
 
     def _pauses_page(self, user: UserProfile, message: str) -> str:
@@ -363,8 +375,8 @@ table{{width:100%;border-collapse:collapse}}th,td{{padding:12px;border-bottom:1p
             role = "Admin" if candidate.is_admin else "User"
             user_rows += f"<tr><td>{candidate.id}</td><td>{self._e(candidate.username)}</td><td>{role}</td><td><a href='/admin/user?id={candidate.id}'>Modifica</a>{delete_link}</td></tr>"
         body = f"""{self._msg(message)}<div class="card hero"><h1>Admin</h1><p class="muted">Gestione utenti, notifiche e scheduler.</p></div>
-<div class="card"><h2>Notifiche ntfy</h2><form method="post" action="/admin/ntfy"><label><input type="checkbox" name="enabled" {'checked' if ntfy.enabled else ''}> Abilita supporto ntfy</label><div class="grid"><label>Server<input name="base_url" value="{self._e(ntfy.base_url)}"></label><label>Token<input name="access_token" value="{self._e(ntfy.access_token)}"></label></div><div class="actions"><button>Salva notifiche</button></div></form></div>
-<div class="card"><h2>Scheduler</h2><form method="post" action="/admin/scheduler/settings"><label><input type="checkbox" name="auto_startup_enabled" {'checked' if scheduler.auto_startup_enabled else ''}> Pianifica allo startup</label><div class="grid"><label>Ora automatica<input name="auto_time" value="{self._e(scheduler.auto_time)}"></label><label>% orario puntuale<input name="exact_badge_chance_percent" value="{scheduler.exact_badge_chance_percent}"></label><label>% offset vicino<input name="near_badge_offset_chance_percent" value="{scheduler.near_badge_offset_chance_percent}"></label></div><div class="actions"><button>Salva scheduler</button></div></form></div>
+<div class="card"><h2>Notifiche ntfy</h2><form method="post" action="/admin/ntfy"><label class="check"><input type="checkbox" name="enabled" {'checked' if ntfy.enabled else ''}> Abilita supporto ntfy</label><div class="grid"><label>Server<input name="base_url" value="{self._e(ntfy.base_url)}"></label><label>Topic test globale<input name="topic" value="{self._e(ntfy.topic)}"></label><label>Token<input name="access_token" value="{self._e(ntfy.access_token)}"></label></div><div class="actions"><button name="submit_action" value="save">Salva notifiche</button><button class="alt" name="submit_action" value="test_ntfy">Testa notifiche</button></div></form></div>
+<div class="card"><h2>Scheduler</h2><form method="post" action="/admin/scheduler/settings"><label class="check"><input type="checkbox" name="auto_startup_enabled" {'checked' if scheduler.auto_startup_enabled else ''}> Pianifica allo startup</label><div class="grid"><label>Ora automatica<input name="auto_time" value="{self._e(scheduler.auto_time)}"></label><label>% orario puntuale<input name="exact_badge_chance_percent" value="{scheduler.exact_badge_chance_percent}"></label><label>% offset vicino<input name="near_badge_offset_chance_percent" value="{scheduler.near_badge_offset_chance_percent}"></label></div><div class="actions"><button>Salva scheduler</button></div></form></div>
 <div class="card table"><h2>Utenti</h2><div class="actions"><a class="btn" href="/admin/user">Nuovo utente</a></div><table><thead><tr><th>ID</th><th>Username</th><th>Ruolo</th><th>Azioni</th></tr></thead><tbody>{user_rows}</tbody></table></div>"""
         return self._page("Admin", body, user)
 
@@ -372,9 +384,12 @@ table{{width:100%;border-collapse:collapse}}th,td{{padding:12px;border-bottom:1p
         target = editing or UserProfile()
         is_edit = editing is not None
         body = f"""{self._msg(message)}<form method="post"><input type="hidden" name="id" value="{target.id}">
-<div class="card hero"><h1>{'Modifica utente' if is_edit else 'Nuovo utente'}</h1></div><div class="split"><div class="card"><h2>Accesso web</h2><label>Username<input name="username" value="{self._e(target.username)}" required></label><label>Password<input type="password" name="password" placeholder="{'Lascia vuoto per non cambiare' if is_edit else 'Password utente'}"></label><label><input type="checkbox" name="is_admin" {'checked' if target.is_admin else ''}> Utente admin</label></div>
-<div class="card"><h2>Corem</h2><label>Username Corem<input name="corem_username" value="{self._e(target.corem_username)}"></label><label>Password Corem<input type="password" name="corem_password" value="{self._e(target.corem_password)}"></label><label>ID utente Corem<input name="corem_user_id" value="{target.corem_user_id}"></label><label><input type="checkbox" name="ntfy_enabled" {'checked' if target.ntfy_enabled else ''}> Abilita ntfy</label><label>Topic ntfy<input name="ntfy_topic" value="{self._e(target.ntfy_topic)}"></label></div></div><div class="card actions"><button name="submit_action" value="save">Salva utente</button>{'<button class="alt" name="submit_action" value="test_ntfy">Testa notifiche</button>' if is_edit else ''}<a class="btn" href="/admin">Torna ad admin</a></div></form>"""
+<div class="card hero"><h1>{'Modifica utente' if is_edit else 'Nuovo utente'}</h1></div><div class="split"><div class="card"><h2>Accesso web</h2><label>Username<input name="username" value="{self._e(target.username)}" required></label><label>Password<input type="password" name="password" placeholder="{'Lascia vuoto per non cambiare' if is_edit else 'Password utente'}"></label><label class="check"><input type="checkbox" name="is_admin" {'checked' if target.is_admin else ''}> Utente admin</label></div>
+<div class="card"><h2>Corem</h2><label>Username Corem<input name="corem_username" value="{self._e(target.corem_username)}"></label><label>Password Corem<input type="password" name="corem_password" value="{self._e(target.corem_password)}"></label><label>ID utente Corem<input name="corem_user_id" value="{target.corem_user_id}"></label><label class="check"><input type="checkbox" name="ntfy_enabled" {'checked' if target.ntfy_enabled else ''}> Abilita ntfy</label><label>Topic ntfy<input name="ntfy_topic" value="{self._e(target.ntfy_topic)}"></label></div></div><div class="card actions"><button name="submit_action" value="save">Salva utente</button>{'<button class="alt" name="submit_action" value="test_ntfy">Testa notifiche</button>' if is_edit else ''}<a class="btn" href="/admin">Torna ad admin</a></div></form>"""
         return self._page("Utente", body, current)
+
+    def _schedule_delete_form(self, entry: DailyScheduleSnapshot) -> str:
+        return f"<form method='post' action='/dashboard/scheduler/delete'><input type='hidden' name='date' value='{self._e(entry.date)}'><input type='hidden' name='user_id' value='{entry.user_id}'><button class='danger iconbtn' title='Cancella'>X</button></form>"
 
     def _find_user_by_username(self, username: str) -> UserProfile | None:
         return next((user for user in self.user_manager.get_all_users() if user.username == username), None)

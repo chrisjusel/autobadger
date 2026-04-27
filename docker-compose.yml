@@ -9,10 +9,10 @@ services:
       AUTOBEDGE_PORT: 10100
       AUTOBEDGE_DATA_DIR: /app/data
       AUTOBEDGE_TIMEZONE: ${AUTOBEDGE_TIMEZONE:-Europe/Rome}
+      AUTOBEDGE_NTP_SERVER: ${AUTOBEDGE_NTP_SERVER:-pool.ntp.org}
       AUTOBEDGE_DRY_RUN: ${AUTOBEDGE_DRY_RUN:-0}
       AUTOBEDGE_SECRET_KEY: ${AUTOBEDGE_SECRET_KEY:-change-this-secret}
     ports:
       - "${AUTOBADGER_HTTP_PORT:-80}:10100"
     volumes:
       - ./data:/app/data
-

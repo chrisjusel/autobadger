@@ -14,10 +14,10 @@ from .user_manager import UserManager
 from .web import WebServerManager
 
 
-def build_app(data_dir: str = "data", dry_run: bool = False, timezone: str = "Europe/Rome"):
+def build_app(data_dir: str = "data", dry_run: bool = False, timezone: str = "Europe/Rome", ntp_server: str = "pool.ntp.org"):
     storage = StorageManager(data_dir)
     storage.begin()
-    ntp_manager = NTPManager(timezone)
+    ntp_manager = NTPManager(timezone, ntp_server)
     ntp_manager.begin()
     user_manager = UserManager(storage, ntp_manager)
     user_manager.begin()
@@ -42,10 +42,11 @@ def main() -> None:
     parser.add_argument("--port", type=int, default=int(os.environ.get("AUTOBEDGE_PORT", "80")))
     parser.add_argument("--data-dir", default=os.environ.get("AUTOBEDGE_DATA_DIR", "data"))
     parser.add_argument("--timezone", default=os.environ.get("AUTOBEDGE_TIMEZONE", "Europe/Rome"))
+    parser.add_argument("--ntp-server", default=os.environ.get("AUTOBEDGE_NTP_SERVER", "pool.ntp.org"))
     parser.add_argument("--dry-run", action="store_true", default=os.environ.get("AUTOBEDGE_DRY_RUN", "0") == "1")
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
-    app = build_app(args.data_dir, args.dry_run, args.timezone)
+    app = build_app(args.data_dir, args.dry_run, args.timezone, args.ntp_server)
     app.run(host=args.host, port=args.port)
 
 

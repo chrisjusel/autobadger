@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from urllib.parse import quote
+
 import requests
 
 from .models import NtfySettings, UserProfile
@@ -82,7 +84,7 @@ class NotificationManager:
         return value.strip().strip("/")
 
     def _publish(self, settings: NtfySettings, title: str, message: str, tags: str, priority: str) -> tuple[bool, str]:
-        url = f"{settings.base_url}/{settings.topic}"
+        url = f"{settings.base_url}/{quote(settings.topic, safe='')}"
         headers = {
             "Content-Type": "text/plain; charset=utf-8",
             "X-Title": title,
@@ -110,4 +112,3 @@ class NotificationManager:
         if len(value) >= 10 and value[4] == "-" and value[7] == "-":
             return f"{value[8:10]}/{value[5:7]}/{value[0:4]}"
         return value
-
