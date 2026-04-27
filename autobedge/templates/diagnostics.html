@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <div class="card">
+    <h2>Pianificazione manuale</h2>
+    <form method="post" action="{{ url_for('admin_scheduler_replan') }}">
+      <div class="grid">
+        <label>Data<input type="date" name="date" value="{{ current_date }}"></label>
+        <label>Utente
+          <select name="user_id">
+            <option value="0">Tutti gli utenti Corem</option>
+            {% for candidate in corem_users %}
+              <option value="{{ candidate.id }}">{{ candidate.username }}</option>
+            {% endfor %}
+          </select>
+        </label>
+      </div>
+      <div class="actions"><button class="alt">Avvia pianificazione</button></div>
+    </form>
+  </div>
+{% endblock %}

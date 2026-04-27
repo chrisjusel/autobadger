@@ -5,7 +5,6 @@ import logging
 import os
 
 from .corem_api import CoremApiManager
-from .device import LedManager, WiFiManager
 from .notification_manager import NotificationManager
 from .scheduler import SchedulerManager
 from .storage import StorageManager
@@ -21,10 +20,6 @@ def build_app(data_dir: str = "data", dry_run: bool = False, timezone: str = "Eu
     ntp_manager.begin()
     user_manager = UserManager(storage, ntp_manager)
     user_manager.begin()
-    led_manager = LedManager()
-    led_manager.begin()
-    wifi_manager = WiFiManager(storage, led_manager)
-    wifi_manager.begin()
     notification_manager = NotificationManager(storage)
     notification_manager.begin()
     corem_api = CoremApiManager(user_manager)

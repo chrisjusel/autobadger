@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <div class="card table">
+    <div class="panel-head">
+      <div>
+        <h2>Pianificazioni presenti</h2>
+        <p class="muted">Ultima pianificazione: {{ fmt_datetime(last_planned_at) }}</p>
+      </div>
+      <div class="actions">
+        <form method="post" action="{{ url_for('dashboard_replan') }}">
+          <button class="alt">Aggiorna pianificazione</button>
+        </form>
+        {% if not user.is_admin %}
+          <form method="post" action="{{ url_for('pauses_cancel_today') }}">
+            <button class="danger">Skippa le pianificazioni odierne</button>
+          </form>
+        {% endif %}
+      </div>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Data</th>
+          <th>Utente</th>
+          <th>Elaborata</th>
+          <th>Modalita</th>
+          <th>Badge IN</th>
+          <th>Badge OUT</th>
+          <th>Note</th>
+          <th>Azioni</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for entry in schedules %}
+          <tr>
+            <td>{{ fmt_date(entry.date) }}</td>
+            <td>{{ entry.username }}</td>
+            <td>{{ fmt_datetime(entry.planned_at) }}</td>
+            <td>{{ "In sede" if entry.in_office else "Telelavoro" }}</td>
+            <td>{{ schedule_cell(entry.badge_in_at, entry.skip_badge_in, entry.badge_in_executed) }}</td>
+            <td>{{ schedule_cell(entry.badge_out_at, entry.skip_badge_out, entry.badge_out_executed) }}</td>
+            <td>{{ entry.note or "-" }}</td>
+            <td>
+              <form class="inlineform" method="post" action="{{ url_for('dashboard_scheduler_delete') }}">
+                <input type="hidden" name="date" value="{{ entry.date }}">
+                <input type="hidden" name="user_id" value="{{ entry.user_id }}">
+                <button class="danger iconbtn" title="Cancella">X</button>
+              </form>
+            </td>
+          </tr>
+        {% else %}
+          <tr><td colspan="8">Nessuna pianificazione disponibile.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="card table">
+    <h2>Ultimi 30 eventi</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Data/Ora</th>
+          <th>Utente</th>
+          <th>Tipo</th>
+          <th>Esito</th>
+          <th>Note</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in logs %}
+          <tr>
+            <td>{{ fmt_datetime(row.entry.timestamp) }}</td>
+            <td>{{ row.username }}</td>
+            <td>{{ row.entry.type }}</td>
+            <td>{{ "OK" if row.entry.success else "KO" }}</td>
+            <td>{{ row.entry.note }}</td>
+          </tr>
+        {% else %}
+          <tr><td colspan="5">Nessun evento disponibile.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}

@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <div class="card hero login-card">
+    <h1>Accedi al pannello</h1>
+    <p class="muted">Sessione locale valida via cookie Flask.</p>
+    <form method="post">
+      <label>Username<input name="username" required></label>
+      <label>Password<input type="password" name="password" required></label>
+      <div class="actions"><button>Accedi</button></div>
+    </form>
+  </div>
+{% endblock %}

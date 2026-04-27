@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <div class="split">
+    <div class="card table">
+      <h2>Pause configurate</h2>
+      <table>
+        <tbody>
+          {% for pause in user.scheduled_pauses %}
+            <tr>
+              <td>{{ fmt_date(pause) }}</td>
+              <td><a class="btn danger" href="{{ url_for('pauses_delete', date=pause) }}">Rimuovi</a></td>
+            </tr>
+          {% else %}
+            <tr><td colspan="2">Nessuna pausa configurata.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="card">
+      <h2>Nuova pausa</h2>
+      <form method="post" action="{{ url_for('pauses_add') }}">
+        <label>Data<input type="date" name="date" required></label>
+        <div class="actions"><button>Aggiungi pausa</button></div>
+      </form>
+    </div>
+  </div>
+{% endblock %}

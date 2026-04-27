@@ -11,7 +11,6 @@ from .models import (
     NtfySettings,
     SchedulerSettings,
     UserProfile,
-    WifiCredentials,
 )
 
 
@@ -32,23 +31,6 @@ class StorageManager:
 
     def save_users(self, users: list[UserProfile]) -> bool:
         return self._write_json("users.json", [self._user_to_dict(user) for user in users])
-
-    def load_wifi_credentials(self) -> WifiCredentials | None:
-        data = self._read_json("wifi.json")
-        if not isinstance(data, dict):
-            return None
-        creds = WifiCredentials(ssid=str(data.get("ssid") or ""), password=str(data.get("password") or ""))
-        return creds if creds.is_valid() else None
-
-    def save_wifi_credentials(self, credentials: WifiCredentials) -> bool:
-        return self._write_json("wifi.json", asdict(credentials))
-
-    def clear_wifi_credentials(self) -> bool:
-        with self._lock:
-            path = self.data_dir / "wifi.json"
-            if path.exists():
-                path.unlink()
-        return True
 
     def load_holidays(self) -> list[str] | None:
         data = self._read_json("holidays.json")
@@ -148,4 +130,3 @@ class StorageManager:
         data = asdict(user)
         data["badge_log"] = [asdict(entry) for entry in user.badge_log]
         return data
-

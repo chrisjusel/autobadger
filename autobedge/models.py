@@ -4,15 +4,6 @@ from dataclasses import dataclass, field
 
 
 @dataclass
-class WifiCredentials:
-    ssid: str = ""
-    password: str = ""
-
-    def is_valid(self) -> bool:
-        return bool(self.ssid)
-
-
-@dataclass
 class BadgeLogEntry:
     timestamp: str = ""
     type: str = ""
@@ -91,4 +82,3 @@ class PlanningStatusSnapshot:
     success: bool = False
     message: str = ""
     timestamp: str = ""
-

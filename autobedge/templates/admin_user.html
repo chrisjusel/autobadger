@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <form method="post">
+    <input type="hidden" name="id" value="{{ target.id }}">
+    <div class="card hero"><h1>{{ "Modifica utente" if is_edit else "Nuovo utente" }}</h1></div>
+    <div class="split">
+      <div class="card">
+        <h2>Accesso web</h2>
+        <label>Username<input name="username" value="{{ target.username }}" required></label>
+        <label>Password<input type="password" name="password" placeholder="{{ 'Lascia vuoto per non cambiare' if is_edit else 'Password utente' }}"></label>
+        <label class="check"><input type="checkbox" name="is_admin" {% if target.is_admin %}checked{% endif %}> Utente admin</label>
+      </div>
+      <div class="card">
+        <h2>Corem</h2>
+        <label>Username Corem<input name="corem_username" value="{{ target.corem_username }}"></label>
+        <label>Password Corem<input type="password" name="corem_password" value="{{ target.corem_password }}"></label>
+        <label>ID utente Corem<input name="corem_user_id" value="{{ target.corem_user_id }}"></label>
+        <label class="check"><input type="checkbox" name="ntfy_enabled" {% if target.ntfy_enabled %}checked{% endif %}> Abilita ntfy</label>
+        <label>Topic ntfy<input name="ntfy_topic" value="{{ target.ntfy_topic }}"></label>
+      </div>
+    </div>
+    <div class="card actions">
+      <button name="submit_action" value="save">Salva utente</button>
+      {% if is_edit %}
+        <button class="alt" name="submit_action" value="test_ntfy">Testa notifiche</button>
+      {% endif %}
+      <a class="btn" href="{{ url_for('admin') }}">Torna ad admin</a>
+    </div>
+  </form>
+{% endblock %}

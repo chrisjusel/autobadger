@@ -56,6 +56,7 @@ Esempio `.env` per uso con Nginx/HTTPS:
 AUTOBEDGE_SECRET_KEY=metti-una-stringa-lunga-casuale
 AUTOBADGER_HTTP_PORT=127.0.0.1:10100
 AUTOBEDGE_TIMEZONE=Europe/Rome
+AUTOBEDGE_NTP_SERVER=pool.ntp.org
 AUTOBEDGE_DRY_RUN=0
 ```
 
@@ -64,6 +65,7 @@ Variabili principali:
 - `AUTOBADGER_HTTP_PORT`: bind host del container, consigliato `127.0.0.1:10100` dietro Nginx
 - `AUTOBEDGE_SECRET_KEY`: chiave Flask stabile per sessioni e cookie
 - `AUTOBEDGE_TIMEZONE`: default `Europe/Rome`
+- `AUTOBEDGE_NTP_SERVER`: server NTP usato per calcolare l'orario applicativo, default `pool.ntp.org`
 - `AUTOBEDGE_DRY_RUN`: `1` per simulare i badge senza chiamare Corem
 
 ## Dati Persistenti
@@ -77,7 +79,6 @@ I JSON applicativi sono montati in volume bind:
 File usati:
 
 - `users.json`
-- `wifi.json`
 - `holidays.json`
 - `ntfy.json`
 - `scheduler.json`
@@ -126,7 +127,3 @@ Poi emetti o rinnova il certificato:
 ```bash
 sudo certbot --nginx -d badge.scientify.it
 ```
-
-## Note
-
-Le funzioni ESP32 WiFi, captive portal e LED sono sostituite da un layer compatibile no-op. Su VPS la rete e' gestita dal sistema operativo o dal provider.

@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-import html
 import os
 import secrets
 from datetime import datetime, timezone
-from urllib.parse import quote, urlencode
+from urllib.parse import urlencode
 
-from flask import Flask, Response, redirect, request, session, url_for
+from flask import Flask, Response, redirect, render_template, request, session, url_for
 
 from .models import DailyScheduleSnapshot, NtfySettings, SchedulerSettings, UserProfile
 from .notification_manager import NotificationManager
@@ -37,19 +36,9 @@ class WebServerManager:
         return app
 
     def _configure_routes(self, app: Flask) -> None:
-        @app.get("/favicon.svg")
-        def favicon_svg() -> Response:
-            svg = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-<rect width="64" height="64" rx="14" fill="#07131f"/>
-<path d="M18 14h28a6 6 0 0 1 6 6v24a6 6 0 0 1-6 6H18a6 6 0 0 1-6-6V20a6 6 0 0 1 6-6Z" fill="#10243a" stroke="#4ecca3" stroke-width="3"/>
-<path d="M22 24h20M22 34h12" stroke="#f7fbff" stroke-width="4" stroke-linecap="round"/>
-<circle cx="45" cy="38" r="6" fill="#4ecca3"/>
-</svg>"""
-            return Response(svg, mimetype="image/svg+xml")
-
         @app.get("/favicon.ico")
         def favicon_ico() -> Response:
-            return redirect(url_for("favicon_svg"))
+            return redirect(url_for("static", filename="favicon.svg"))
 
         @app.get("/")
         def root() -> Response | str:
@@ -300,28 +289,23 @@ class WebServerManager:
             return redirect(self._with_msg("dashboard", "Pagina non disponibile per admin"))
         return user
 
-    def _page(self, title: str, body: str, user: UserProfile | None = None) -> str:
-        nav = self._navigation(user) if user else ""
-        banner = "<div class='banner'>MODALITA' DRY RUN ATTIVA</div>" if self.dry_run else ""
-        return f"""<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{self._e(title)}</title><link rel="icon" type="image/svg+xml" href="/favicon.svg"><style>
-:root{{--bg:#07131f;--panel:#10243a;--muted:#a9bed5;--text:#f7fbff;--accent:#4ecca3;--danger:#ff6b6b;--line:rgba(255,255,255,.12)}}
-*{{box-sizing:border-box}}body{{margin:0;min-height:100vh;color:var(--text);font-family:Trebuchet MS,Segoe UI,sans-serif;background:radial-gradient(circle at top left,rgba(78,204,163,.18),transparent 30%),linear-gradient(180deg,#081421,#07111d);line-height:1.45}}
-a{{color:#77ffd1;text-decoration:none}}.wrap{{max-width:1160px;margin:0 auto;padding:16px 16px 56px}}.banner{{background:#b42323;color:white;text-align:center;font-weight:800;padding:12px}}
-.card{{background:linear-gradient(180deg,rgba(19,43,69,.96),rgba(12,31,49,.95));border:1px solid var(--line);border-radius:22px;padding:20px;margin-bottom:18px;box-shadow:0 18px 55px rgba(0,0,0,.28)}}
-.hero{{border-color:rgba(78,204,163,.34)}}h1,h2,h3{{margin:0 0 10px}}p{{margin:0 0 10px}}.muted{{color:var(--muted)}}.msg{{padding:14px 16px;border:1px solid rgba(78,204,163,.30);background:rgba(78,204,163,.12);border-radius:16px;margin-bottom:16px}}
-.nav{{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between}}.brand{{display:grid;gap:8px}}.logo{{display:inline-grid;gap:0;line-height:1;text-transform:uppercase;letter-spacing:0}}.logo-main{{font-weight:900;font-size:1.08rem;color:#f7fbff}}.logo-sub{{margin-top:3px;font-size:.64rem;font-weight:800;color:#4ecca3}}.chips{{display:flex;gap:8px;flex-wrap:wrap}}.chip{{display:inline-flex;align-items:center;border-radius:999px;padding:6px 10px;font-size:.82rem;font-weight:800;border:1px solid var(--line)}}.chip-user{{background:rgba(78,204,163,.18);color:#baffea;border-color:rgba(78,204,163,.42)}}.chip-role{{background:rgba(99,164,255,.18);color:#cfe2ff;border-color:rgba(99,164,255,.42)}}.links{{display:flex;gap:10px;flex-wrap:wrap}}.nav-toggle{{display:none}}.hamburger{{display:none;align-items:center;justify-content:center;width:44px;height:44px;border:1px solid var(--line);border-radius:14px;background:rgba(255,255,255,.05);cursor:pointer}}.hamburger span,.hamburger span:before,.hamburger span:after{{display:block;width:20px;height:2px;border-radius:2px;background:var(--text);content:""}}.hamburger span:before{{transform:translateY(-7px)}}.hamburger span:after{{transform:translateY(5px)}}.pill,.btn,button{{display:inline-flex;align-items:center;justify-content:center;border-radius:14px;border:1px solid var(--line);padding:11px 14px;font-weight:800;min-height:44px;cursor:pointer}}
-.pill{{background:rgba(255,255,255,.05);color:var(--text)}}.pill.active{{background:rgba(78,204,163,.22);border-color:rgba(78,204,163,.65);color:#baffea;box-shadow:inset 0 0 0 1px rgba(78,204,163,.18)}}.btn,button{{background:linear-gradient(135deg,var(--accent),#39b28b);color:#072217}}.danger{{background:linear-gradient(135deg,#ff8989,#ff5f73)!important;color:#30090d!important}}.alt{{background:linear-gradient(135deg,#63a4ff,#3a78e0)!important;color:#071a38!important}}.iconbtn{{width:28px;min-height:28px;height:28px;padding:0;border-radius:8px;font-size:.9rem;line-height:1}}.inlineform{{display:inline-flex;margin:0}}
-.grid,.split,.stats{{display:grid;gap:14px}}.split{{grid-template-columns:repeat(2,minmax(0,1fr))}}.grid{{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}}.stats{{grid-template-columns:repeat(auto-fit,minmax(170px,1fr))}}
-input,select{{width:100%;min-height:48px;padding:12px;border-radius:14px;border:1px solid var(--line);background:rgba(4,15,24,.42);color:var(--text);margin-top:7px}}input[type=checkbox]{{width:18px;min-height:0;height:18px;padding:0;margin:0;border:0;background:transparent;accent-color:var(--accent);flex:0 0 auto}}label{{font-weight:800}}.check{{display:flex;align-items:center;gap:8px;width:max-content;max-width:100%;margin:8px 0}}.checkrow{{display:flex;gap:10px;flex-wrap:wrap}}.checkrow label{{padding:10px 12px;border:1px solid var(--line);border-radius:14px}}
-table{{width:100%;border-collapse:collapse}}th,td{{padding:12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}}th{{color:var(--muted);font-size:.8rem;text-transform:uppercase}}.table{{overflow:auto}}.actions{{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}}.stat{{padding:14px;border:1px solid var(--line);border-radius:18px;background:rgba(255,255,255,.04)}}.stat b{{display:block;font-size:1.35rem}}
-.panel-head{{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap}}.panel-head .actions{{margin-top:0;justify-content:flex-end}}
-@media(max-width:800px){{.wrap{{padding:12px 12px 44px}}.nav{{align-items:flex-start}}.brand{{max-width:calc(100% - 58px)}}.hamburger{{display:inline-flex;flex:0 0 44px}}.links{{display:none;grid-template-columns:1fr;width:100%;order:3}}.nav-toggle:checked~.links{{display:grid}}.links .pill,.btn,button{{width:100%}}.split{{grid-template-columns:1fr}}.grid{{grid-template-columns:1fr}}.card{{padding:16px;border-radius:18px}}table{{min-width:760px}}.panel-head{{display:block}}.panel-head .actions{{justify-content:stretch;margin-top:12px}}}}
-</style></head><body>{banner}<div class="wrap">{nav}{body}</div></body></html>"""
+    def _render(self, template: str, title: str, user: UserProfile | None = None, message: str = "", **context: object) -> str:
+        return render_template(
+            template,
+            title=title,
+            user=user,
+            message=message,
+            dry_run=self.dry_run,
+            nav_links=self._nav_links(user) if user else [],
+            fmt_date=self._fmt_date,
+            fmt_datetime=self._fmt_datetime,
+            schedule_cell=self._schedule_cell,
+            **context,
+        )
 
-    def _navigation(self, user: UserProfile | None) -> str:
+    def _nav_links(self, user: UserProfile | None) -> list[dict[str, str | bool]]:
         if user is None:
-            return ""
+            return []
         current_path = request.path
         links = [self._nav_link("/dashboard", "Dashboard", current_path)]
         if not user.is_admin:
@@ -329,95 +313,59 @@ table{{width:100%;border-collapse:collapse}}th,td{{padding:12px;border-bottom:1p
         if user.is_admin:
             links.extend([self._nav_link("/admin", "Admin", current_path), self._nav_link("/diagnostics", "Diagnostica", current_path)])
         links.append(self._nav_link("/logout", "Logout", current_path))
-        logo = "<div class='logo'><span class='logo-main'>corem barger</span><span class='logo-sub'>py version</span></div>"
-        return f"<div class='card nav'><div class='brand'>{logo}<div class='chips'><span class='chip chip-user'>{self._e(user.username)}</span><span class='chip chip-role'>{'Admin' if user.is_admin else 'Utente'}</span></div></div><input class='nav-toggle' id='nav-toggle' type='checkbox'><label class='hamburger' for='nav-toggle' aria-label='Menu'><span></span></label><div class='links'>{''.join(links)}</div></div>"
+        return links
 
-    def _nav_link(self, href: str, label: str, current_path: str) -> str:
-        active = " active" if current_path == href or (href != "/dashboard" and current_path.startswith(f"{href}/")) else ""
-        return f"<a class='pill{active}' href='{href}'>{self._e(label)}</a>"
+    @staticmethod
+    def _nav_link(href: str, label: str, current_path: str) -> dict[str, str | bool]:
+        active = current_path == href or (href != "/dashboard" and current_path.startswith(f"{href}/"))
+        return {"href": href, "label": label, "active": active}
 
     def _login_page(self, message: str) -> str:
-        msg = self._msg(message)
-        body = f"<div class='card hero' style='max-width:560px;margin:8vh auto'><h1>Accedi al pannello</h1><p class='muted'>Sessione locale valida via cookie Flask.</p>{msg}<form method='post'><label>Username<input name='username' required></label><label>Password<input type='password' name='password' required></label><div class='actions'><button>Accedi</button></div></form></div>"
-        return self._page("Login", body)
+        return self._render("login.html", "Login", message=message)
 
     def _planning_pending_page(self, user: UserProfile, message: str) -> str:
-        body = f"""<meta http-equiv="refresh" content="1">
-<div style="position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(7,19,31,.92);backdrop-filter:blur(3px)">
-<div class="card hero" style="max-width:560px;width:100%;margin:0;text-align:center">
-<h1>Aggiornamento pianificazioni</h1>
-<p class="muted">{self._e(message or 'Le pianificazioni sono in aggiornamento. Attendi il completamento.')}</p>
-</div>
-</div>"""
-        return self._page("Pianificazione in corso", body, user)
+        return self._render("planning_pending.html", "Pianificazione in corso", user, pending_message=message)
 
     def _dashboard_page(self, user: UserProfile, message: str) -> str:
         users = self.user_manager.get_all_users() if user.is_admin else [user]
-        schedules = self.scheduler_manager.get_schedules_snapshot()
+        schedules = [entry for entry in self.scheduler_manager.get_schedules_snapshot() if user.is_admin or entry.user_id == user.id]
         logs = []
         for candidate in users:
             for entry in candidate.badge_log:
-                logs.append((candidate.username, entry))
-        logs.sort(key=lambda row: row[1].timestamp, reverse=True)
-        rows = "".join(
-            f"<tr><td>{self._fmt_date(entry.date)}</td><td>{self._e(entry.username)}</td><td>{self._fmt_datetime(entry.planned_at)}</td><td>{'In sede' if entry.in_office else 'Telelavoro'}</td><td>{self._schedule_cell(entry.badge_in_at, entry.skip_badge_in, entry.badge_in_executed)}</td><td>{self._schedule_cell(entry.badge_out_at, entry.skip_badge_out, entry.badge_out_executed)}</td><td>{self._e(entry.note or '-')}</td><td>{self._schedule_delete_form(entry)}</td></tr>"
-            for entry in schedules
-            if user.is_admin or entry.user_id == user.id
-        ) or "<tr><td colspan='8'>Nessuna pianificazione disponibile.</td></tr>"
-        log_rows = "".join(
-            f"<tr><td>{self._fmt_datetime(log.timestamp)}</td><td>{self._e(username)}</td><td>{self._e(log.type)}</td><td>{'OK' if log.success else 'KO'}</td><td>{self._e(log.note)}</td></tr>"
-            for username, log in logs[:30]
-        ) or "<tr><td colspan='5'>Nessun evento disponibile.</td></tr>"
-        cancel = "" if user.is_admin else "<form method='post' action='/pauses/cancel-today'><button class='danger'>Skippa le pianificazioni odierne</button></form>"
-        planning_actions = f"<div class='actions'><form method='post' action='/dashboard/scheduler/replan'><button class='alt'>Aggiorna pianificazione</button></form>{cancel}</div>"
-        last_planned_at = max((entry.planned_at for entry in schedules if entry.planned_at and (user.is_admin or entry.user_id == user.id)), default="")
-        planning_meta = f"<p class='muted'>Ultima pianificazione: {self._fmt_datetime(last_planned_at)}</p>"
-        body = f"{self._msg(message)}<div class='card table'><div class='panel-head'><div><h2>Pianificazioni presenti</h2>{planning_meta}</div>{planning_actions}</div><table><thead><tr><th>Data</th><th>Utente</th><th>Elaborata</th><th>Modalita</th><th>Badge IN</th><th>Badge OUT</th><th>Note</th><th>Azioni</th></tr></thead><tbody>{rows}</tbody></table></div><div class='card table'><h2>Ultimi 30 eventi</h2><table><thead><tr><th>Data/Ora</th><th>Utente</th><th>Tipo</th><th>Esito</th><th>Note</th></tr></thead><tbody>{log_rows}</tbody></table></div>"
-        return self._page("Dashboard", body, user)
+                logs.append({"username": candidate.username, "entry": entry})
+        logs.sort(key=lambda row: row["entry"].timestamp, reverse=True)
+        last_planned_at = max((entry.planned_at for entry in schedules if entry.planned_at), default="")
+        return self._render("dashboard.html", "Dashboard", user, message, schedules=schedules, logs=logs[:30], last_planned_at=last_planned_at)
 
     def _settings_page(self, user: UserProfile, message: str) -> str:
-        day_labels = ["Lun", "Mar", "Mer", "Gio", "Ven"]
-        checks = "".join(f"<label class='check'><input type='checkbox' name='office_day' value='{idx}' {'checked' if idx in user.office_days else ''}> {label}</label>" for idx, label in enumerate(day_labels))
-        body = f"""{self._msg(message)}<form method="post"><div class="card"><h2>Casa</h2><div class="grid"><label>Latitudine casa<input name="home_lat" value="{user.home_lat:.6f}"></label><label>Longitudine casa<input name="home_lon" value="{user.home_lon:.6f}"></label><label>Accuratezza casa<input name="home_accuracy" value="{user.home_accuracy}"></label></div></div>
-<div class="card"><h2>Ufficio</h2><div class="grid"><label>Latitudine sede<input name="office_lat" value="{user.office_lat:.6f}"></label><label>Longitudine sede<input name="office_lon" value="{user.office_lon:.6f}"></label><label>Accuratezza sede<input name="office_accuracy" value="{user.office_accuracy}"></label></div></div>
-<div class="card"><h2>Giorni in ufficio</h2><div class="checkrow">{checks}</div></div>
-<div class="card"><h2>Notifiche ntfy</h2><label class="check"><input type="checkbox" name="ntfy_enabled" {'checked' if user.ntfy_enabled else ''}> Abilita notifiche ntfy</label><label>Topic<input name="ntfy_topic" value="{self._e(user.ntfy_topic)}"></label><div class="actions"><button name="submit_action" value="save">Salva</button><button class="alt" name="submit_action" value="test_ntfy">Testa notifiche</button></div></div></form>"""
-        return self._page("Impostazioni", body, user)
+        return self._render("settings.html", "Impostazioni", user, message, day_labels=["Lun", "Mar", "Mer", "Gio", "Ven"])
 
     def _pauses_page(self, user: UserProfile, message: str) -> str:
-        pauses = "".join(f"<tr><td>{self._fmt_date(pause)}</td><td><a class='btn danger' href='/pauses/delete?date={quote(pause)}'>Rimuovi</a></td></tr>" for pause in user.scheduled_pauses) or "<tr><td colspan='2'>Nessuna pausa configurata.</td></tr>"
-        body = f"{self._msg(message)}<div class='split'><div class='card table'><h2>Pause configurate</h2><table><tbody>{pauses}</tbody></table></div><div class='card'><h2>Nuova pausa</h2><form method='post' action='/pauses/add'><label>Data<input type='date' name='date' required></label><div class='actions'><button>Aggiungi pausa</button></div></form></div></div>"
-        return self._page("Pause", body, user)
+        return self._render("pauses.html", "Pause", user, message)
 
     def _diagnostics_page(self, user: UserProfile, message: str) -> str:
-        options = "".join(f"<option value='{candidate.id}'>{self._e(candidate.username)}</option>" for candidate in self.user_manager.get_corem_enabled_users())
-        body = f"{self._msg(message)}<div class='card'><h2>Pianificazione manuale</h2><form method='post' action='/admin/scheduler/replan'><div class='grid'><label>Data<input type='date' name='date' value='{self.ntp_manager.get_current_date()}'></label><label>Utente<select name='user_id'><option value='0'>Tutti gli utenti Corem</option>{options}</select></label></div><div class='actions'><button class='alt'>Avvia pianificazione</button></div></form></div>"
-        return self._page("Diagnostica", body, user)
+        return self._render(
+            "diagnostics.html",
+            "Diagnostica",
+            user,
+            message,
+            corem_users=self.user_manager.get_corem_enabled_users(),
+            current_date=self.ntp_manager.get_current_date(),
+        )
 
     def _admin_page(self, user: UserProfile, message: str) -> str:
-        ntfy = self.notification_manager.get_settings()
-        scheduler = self.scheduler_manager.get_settings()
-        users = self.user_manager.get_all_users()
-        user_rows = ""
-        for candidate in users:
-            delete_link = "" if candidate.is_admin else f" | <a href='/admin/delete?id={candidate.id}'>Elimina</a>"
-            role = "Admin" if candidate.is_admin else "User"
-            user_rows += f"<tr><td>{candidate.id}</td><td>{self._e(candidate.username)}</td><td>{role}</td><td><a href='/admin/user?id={candidate.id}'>Modifica</a>{delete_link}</td></tr>"
-        body = f"""{self._msg(message)}<div class="card"><h2>Notifiche ntfy</h2><form method="post" action="/admin/ntfy"><label class="check"><input type="checkbox" name="enabled" {'checked' if ntfy.enabled else ''}> Abilita supporto ntfy</label><div class="grid"><label>Server<input name="base_url" value="{self._e(ntfy.base_url)}"></label><label>Topic test globale<input name="topic" value="{self._e(ntfy.topic)}"></label><label>Token<input name="access_token" value="{self._e(ntfy.access_token)}"></label></div><div class="actions"><button name="submit_action" value="save">Salva notifiche</button><button class="alt" name="submit_action" value="test_ntfy">Testa notifiche</button></div></form></div>
-<div class="card"><h2>Scheduler</h2><form method="post" action="/admin/scheduler/settings"><label class="check"><input type="checkbox" name="auto_startup_enabled" {'checked' if scheduler.auto_startup_enabled else ''}> Pianifica allo startup</label><div class="grid"><label>Ora automatica<input name="auto_time" value="{self._e(scheduler.auto_time)}"></label><label>% orario puntuale<input name="exact_badge_chance_percent" value="{scheduler.exact_badge_chance_percent}"></label><label>% offset vicino<input name="near_badge_offset_chance_percent" value="{scheduler.near_badge_offset_chance_percent}"></label></div><div class="actions"><button>Salva scheduler</button></div></form></div>
-<div class="card table"><h2>Utenti</h2><div class="actions"><a class="btn" href="/admin/user">Nuovo utente</a></div><table><thead><tr><th>ID</th><th>Username</th><th>Ruolo</th><th>Azioni</th></tr></thead><tbody>{user_rows}</tbody></table></div>"""
-        return self._page("Admin", body, user)
+        return self._render(
+            "admin.html",
+            "Admin",
+            user,
+            message,
+            ntfy=self.notification_manager.get_settings(),
+            scheduler=self.scheduler_manager.get_settings(),
+            users=self.user_manager.get_all_users(),
+        )
 
     def _admin_user_page(self, current: UserProfile, editing: UserProfile | None, message: str) -> str:
-        target = editing or UserProfile()
-        is_edit = editing is not None
-        body = f"""{self._msg(message)}<form method="post"><input type="hidden" name="id" value="{target.id}">
-<div class="card hero"><h1>{'Modifica utente' if is_edit else 'Nuovo utente'}</h1></div><div class="split"><div class="card"><h2>Accesso web</h2><label>Username<input name="username" value="{self._e(target.username)}" required></label><label>Password<input type="password" name="password" placeholder="{'Lascia vuoto per non cambiare' if is_edit else 'Password utente'}"></label><label class="check"><input type="checkbox" name="is_admin" {'checked' if target.is_admin else ''}> Utente admin</label></div>
-<div class="card"><h2>Corem</h2><label>Username Corem<input name="corem_username" value="{self._e(target.corem_username)}"></label><label>Password Corem<input type="password" name="corem_password" value="{self._e(target.corem_password)}"></label><label>ID utente Corem<input name="corem_user_id" value="{target.corem_user_id}"></label><label class="check"><input type="checkbox" name="ntfy_enabled" {'checked' if target.ntfy_enabled else ''}> Abilita ntfy</label><label>Topic ntfy<input name="ntfy_topic" value="{self._e(target.ntfy_topic)}"></label></div></div><div class="card actions"><button name="submit_action" value="save">Salva utente</button>{'<button class="alt" name="submit_action" value="test_ntfy">Testa notifiche</button>' if is_edit else ''}<a class="btn" href="/admin">Torna ad admin</a></div></form>"""
-        return self._page("Utente", body, current)
-
-    def _schedule_delete_form(self, entry: DailyScheduleSnapshot) -> str:
-        return f"<form class='inlineform' method='post' action='/dashboard/scheduler/delete'><input type='hidden' name='date' value='{self._e(entry.date)}'><input type='hidden' name='user_id' value='{entry.user_id}'><button class='danger iconbtn' title='Cancella'>X</button></form>"
+        return self._render("admin_user.html", "Utente", current, message, target=editing or UserProfile(), is_edit=editing is not None)
 
     def _find_user_by_username(self, username: str) -> UserProfile | None:
         return next((user for user in self.user_manager.get_all_users() if user.username == username), None)
@@ -426,13 +374,6 @@ table{{width:100%;border-collapse:collapse}}th,td{{padding:12px;border-bottom:1p
         params = dict(values)
         params["msg"] = message
         return f"{url_for(endpoint)}?{urlencode(params)}"
-
-    def _msg(self, message: str) -> str:
-        return f"<div class='msg'>{self._e(message)}</div>" if message else ""
-
-    @staticmethod
-    def _e(value: object) -> str:
-        return html.escape(str(value), quote=True)
 
     @staticmethod
     def _to_int(value: str | None, default: int = 0) -> int:
@@ -464,7 +405,7 @@ table{{width:100%;border-collapse:collapse}}th,td{{padding:12px;border-bottom:1p
                 pass
         if len(text) >= 10 and text[4] == "-" and text[7] == "-":
             return self._fmt_date(text)
-        return self._e(text)
+        return text
 
     def _schedule_cell(self, epoch: float, skipped: bool, executed: bool) -> str:
         if skipped:

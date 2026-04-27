@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block head %}
+  <meta http-equiv="refresh" content="1">
+{% endblock %}
+
+{% block content %}
+  <div class="pending-overlay">
+    <div class="card hero pending-card">
+      <h1>Aggiornamento pianificazioni</h1>
+      <p class="muted">{{ pending_message or "Le pianificazioni sono in aggiornamento. Attendi il completamento." }}</p>
+    </div>
+  </div>
+{% endblock %}

@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{{ title }}</title>
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  {% block head %}{% endblock %}
+</head>
+<body>
+  {% if dry_run %}
+    <div class="banner">MODALITA' DRY RUN ATTIVA</div>
+  {% endif %}
+  <div class="wrap">
+    {% if user %}
+      <div class="card nav">
+        <div class="brand">
+          <div class="logo">
+            <span class="logo-main">corem badger</span>
+            <span class="logo-sub">py version</span>
+          </div>
+          <div class="chips">
+            <span class="chip chip-user">{{ user.username }}</span>
+            <span class="chip chip-role">{{ "Admin" if user.is_admin else "Utente" }}</span>
+          </div>
+        </div>
+        <details class="nav-menu">
+          <summary class="hamburger" aria-label="Menu"><span></span></summary>
+          <div class="links">
+            {% for link in nav_links %}
+              <a class="pill{% if link.active %} active{% endif %}" href="{{ link.href }}">{{ link.label }}</a>
+            {% endfor %}
+          </div>
+        </details>
+      </div>
+    {% endif %}
+    {% if message %}
+      <div class="msg">{{ message }}</div>
+    {% endif %}
+    {% block content %}{% endblock %}
+  </div>
+</body>
+</html>

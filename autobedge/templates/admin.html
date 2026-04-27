@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <div class="card">
+    <h2>Notifiche ntfy</h2>
+    <form method="post" action="{{ url_for('admin_ntfy') }}">
+      <label class="check"><input type="checkbox" name="enabled" {% if ntfy.enabled %}checked{% endif %}> Abilita supporto ntfy</label>
+      <div class="grid">
+        <label>Server<input name="base_url" value="{{ ntfy.base_url }}"></label>
+        <label>Topic test globale<input name="topic" value="{{ ntfy.topic }}"></label>
+        <label>Token<input name="access_token" value="{{ ntfy.access_token }}"></label>
+      </div>
+      <div class="actions">
+        <button name="submit_action" value="save">Salva notifiche</button>
+        <button class="alt" name="submit_action" value="test_ntfy">Testa notifiche</button>
+      </div>
+    </form>
+  </div>
+  <div class="card">
+    <h2>Scheduler</h2>
+    <form method="post" action="{{ url_for('admin_scheduler_settings') }}">
+      <label class="check"><input type="checkbox" name="auto_startup_enabled" {% if scheduler.auto_startup_enabled %}checked{% endif %}> Pianifica allo startup</label>
+      <div class="grid">
+        <label>Ora automatica<input name="auto_time" value="{{ scheduler.auto_time }}"></label>
+        <label>% orario puntuale<input name="exact_badge_chance_percent" value="{{ scheduler.exact_badge_chance_percent }}"></label>
+        <label>% offset vicino<input name="near_badge_offset_chance_percent" value="{{ scheduler.near_badge_offset_chance_percent }}"></label>
+      </div>
+      <div class="actions"><button>Salva scheduler</button></div>
+    </form>
+  </div>
+  <div class="card table">
+    <h2>Utenti</h2>
+    <div class="actions"><a class="btn" href="{{ url_for('admin_user') }}">Nuovo utente</a></div>
+    <table>
+      <thead>
+        <tr><th>ID</th><th>Username</th><th>Ruolo</th><th>Azioni</th></tr>
+      </thead>
+      <tbody>
+        {% for candidate in users %}
+          <tr>
+            <td>{{ candidate.id }}</td>
+            <td>{{ candidate.username }}</td>
+            <td>{{ "Admin" if candidate.is_admin else "User" }}</td>
+            <td>
+              <a href="{{ url_for('admin_user', id=candidate.id) }}">Modifica</a>
+              {% if not candidate.is_admin %}
+                | <a href="{{ url_for('admin_delete', id=candidate.id) }}">Elimina</a>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}

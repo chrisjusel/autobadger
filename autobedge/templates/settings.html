@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <form method="post">
+    <div class="card">
+      <h2>Casa</h2>
+      <div class="grid">
+        <label>Latitudine casa<input name="home_lat" value="{{ '%.6f'|format(user.home_lat) }}"></label>
+        <label>Longitudine casa<input name="home_lon" value="{{ '%.6f'|format(user.home_lon) }}"></label>
+        <label>Accuratezza casa<input name="home_accuracy" value="{{ user.home_accuracy }}"></label>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Ufficio</h2>
+      <div class="grid">
+        <label>Latitudine sede<input name="office_lat" value="{{ '%.6f'|format(user.office_lat) }}"></label>
+        <label>Longitudine sede<input name="office_lon" value="{{ '%.6f'|format(user.office_lon) }}"></label>
+        <label>Accuratezza sede<input name="office_accuracy" value="{{ user.office_accuracy }}"></label>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Giorni in ufficio</h2>
+      <div class="checkrow">
+        {% for label in day_labels %}
+          <label class="check">
+            <input type="checkbox" name="office_day" value="{{ loop.index0 }}" {% if loop.index0 in user.office_days %}checked{% endif %}>
+            {{ label }}
+          </label>
+        {% endfor %}
+      </div>
+    </div>
+    <div class="card">
+      <h2>Notifiche ntfy</h2>
+      <label class="check"><input type="checkbox" name="ntfy_enabled" {% if user.ntfy_enabled %}checked{% endif %}> Abilita notifiche ntfy</label>
+      <label>Topic<input name="ntfy_topic" value="{{ user.ntfy_topic }}"></label>
+      <div class="actions">
+        <button name="submit_action" value="save">Salva</button>
+        <button class="alt" name="submit_action" value="test_ntfy">Testa notifiche</button>
+      </div>
+    </div>
+  </form>
+{% endblock %}
