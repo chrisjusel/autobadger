@@ -5,15 +5,16 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-WorkingDirectory=/opt/autobedge
+WorkingDirectory=/home/ubuntu/autobadger
 Environment=AUTOBEDGE_HOST=0.0.0.0
 Environment=AUTOBEDGE_PORT=80
-Environment=AUTOBEDGE_DATA_DIR=/opt/autobedge/data
+Environment=PYTHONPATH=/home/ubuntu/autobadger
+Environment=AUTOBEDGE_DATA_DIR=/home/ubuntu/autobadger/data
 Environment=AUTOBEDGE_TIMEZONE=Europe/Rome
 Environment=AUTOBEDGE_SECRET_KEY=change-this-secret
 AmbientCapabilities=CAP_NET_BIND_SERVICE
 CapabilityBoundingSet=CAP_NET_BIND_SERVICE
-ExecStart=/opt/autobedge/.venv/bin/python -m autobedge.app
+ExecStart=/home/ubuntu/autobadger/.venv/bin/python -m autobedge.app
 Restart=always
 RestartSec=5
 

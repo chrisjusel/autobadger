@@ -5,6 +5,7 @@ Questa cartella contiene la migrazione Python dell'applicazione ESP32 per esecuz
 ## Avvio locale
 
 ```bash
+cd /home/ubuntu/autobadger
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
@@ -45,3 +46,33 @@ Puoi copiare questi file dal filesystem LittleFS/backup del firmware nella direc
 Su Linux le funzioni ESP32 WiFi, captive portal e LED sono sostituite da un layer compatibile no-op. La rete della VM va configurata con gli strumenti del sistema operativo; la pagina WiFi salva solo metadati compatibili con il vecchio formato.
 
 La porta `80` e' privilegiata su Linux: in avvio manuale serve `sudo`, oppure usa la unit systemd inclusa che concede `CAP_NET_BIND_SERVICE`.
+
+## Deploy su VPS
+
+Directory predefinita:
+
+```text
+/home/ubuntu/autobadger
+```
+
+Prima installazione:
+
+```bash
+cd /home/ubuntu
+git clone --branch master https://github.com/chrisjusel/autobadger.git autobadger
+cd /home/ubuntu/autobadger
+python3 -m venv .venv
+. .venv/bin/activate
+pip install -r requirements.txt
+sudo cp systemd/autobedge.service /etc/systemd/system/autobedge.service
+sudo systemctl daemon-reload
+sudo systemctl enable autobedge
+sudo systemctl start autobedge
+```
+
+Aggiornamento:
+
+```bash
+cd /
+sudo /home/ubuntu/autobadger/update_autobedge.sh
+```

@@ -2,10 +2,10 @@
 set -Eeuo pipefail
 
 REPO_URL="${REPO_URL:-https://github.com/chrisjusel/autobadger.git}"
-APP_DIR="${APP_DIR:-/opt/autobedge}"
+APP_DIR="${APP_DIR:-/home/ubuntu/autobadger}"
 BRANCH="${BRANCH:-master}"
 SERVICE_NAME="${SERVICE_NAME:-autobedge}"
-BACKUP_ROOT="${BACKUP_ROOT:-/opt/autobedge-backups}"
+BACKUP_ROOT="${BACKUP_ROOT:-/home/ubuntu/autobadger-backups}"
 
 log() {
   printf '[autobedge-update] %s\n' "$*"
