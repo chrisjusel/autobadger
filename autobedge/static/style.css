@@ -13,13 +13,76 @@
   box-sizing: border-box;
 }
 
+html {
+  min-height: 100%;
+  background: var(--app-bg);
+  overscroll-behavior: none;
+}
+
 body {
   margin: 0;
-  min-height: 100vh;
+  min-height: 100dvh;
+  overflow: hidden;
   color: var(--text);
   font-family: Trebuchet MS, Segoe UI, sans-serif;
   background: var(--app-bg);
   line-height: 1.45;
+  overscroll-behavior: none;
+}
+
+.app-shell {
+  position: fixed;
+  inset: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  min-height: 100dvh;
+  background: var(--app-bg);
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.pull-refresh {
+  position: fixed;
+  top: calc(10px + env(safe-area-inset-top));
+  left: 50%;
+  z-index: 10001;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid rgba(78, 204, 163, .34);
+  border-radius: 999px;
+  background: rgba(12, 31, 49, .96);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, .28);
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, -76px) scale(.92);
+  transition: opacity .18s ease, transform .18s ease;
+}
+
+.pull-refresh-icon {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transform: rotate(var(--pull-rotation, 0deg));
+}
+
+.pull-refresh.visible {
+  opacity: 1;
+}
+
+.pull-refresh.refreshing .pull-refresh-icon {
+  animation: spin .72s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 a {

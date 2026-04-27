@@ -10,6 +10,7 @@
   <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='img/icon-180.png') }}">
   <link rel="apple-touch-icon" sizes="192x192" href="{{ url_for('static', filename='img/icon-192.png') }}">
   <link rel="manifest" href="{{ url_for('static', filename='manifest.webmanifest') }}">
+  <script src="{{ url_for('static', filename='app.js') }}" defer></script>
   <meta name="theme-color" content="#07131f">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -19,40 +20,48 @@
   {% block head %}{% endblock %}
 </head>
 <body>
-  {% if dry_run %}
-    <div class="banner">MODALITA' DRY RUN ATTIVA</div>
-  {% endif %}
-  <div class="wrap">
-    {% if user %}
-      <div class="card nav">
-        <div class="brand">
-          <div class="logo">
-            <span class="logo-main">corem badger</span>
-            <span class="logo-sub">py version</span>
-          </div>
-          <div class="chips">
-            <span class="chip chip-user">{{ user.username }}</span>
-            <span class="chip chip-role">{{ "Admin" if user.is_admin else "Utente" }}</span>
-          </div>
-        </div>
-        <input class="nav-toggle" id="nav-toggle" type="checkbox">
-        <label class="hamburger" for="nav-toggle" aria-label="Menu"><span></span></label>
-        <div class="links desktop-links">
-          {% for link in nav_links %}
-            <a class="pill{% if link.active %} active{% endif %}" href="{{ link.href }}">{{ link.label }}</a>
-          {% endfor %}
-        </div>
-        <div class="links mobile-links">
-          {% for link in nav_links %}
-            <a class="pill{% if link.active %} active{% endif %}" href="{{ link.href }}">{{ link.label }}</a>
-          {% endfor %}
-        </div>
-      </div>
+  <div class="app-shell">
+    <div class="pull-refresh" aria-hidden="true">
+      <svg class="pull-refresh-icon" viewBox="0 0 24 24">
+        <path d="M20 12a8 8 0 1 1-2.34-5.66"/>
+        <path d="M20 4v6h-6"/>
+      </svg>
+    </div>
+    {% if dry_run %}
+      <div class="banner">MODALITA' DRY RUN ATTIVA</div>
     {% endif %}
-    {% if message %}
-      <div class="msg">{{ message }}</div>
-    {% endif %}
-    {% block content %}{% endblock %}
+    <div class="wrap">
+      {% if user %}
+        <div class="card nav">
+          <div class="brand">
+            <div class="logo">
+              <span class="logo-main">corem badger</span>
+              <span class="logo-sub">py version</span>
+            </div>
+            <div class="chips">
+              <span class="chip chip-user">{{ user.username }}</span>
+              <span class="chip chip-role">{{ "Admin" if user.is_admin else "Utente" }}</span>
+            </div>
+          </div>
+          <input class="nav-toggle" id="nav-toggle" type="checkbox">
+          <label class="hamburger" for="nav-toggle" aria-label="Menu"><span></span></label>
+          <div class="links desktop-links">
+            {% for link in nav_links %}
+              <a class="pill{% if link.active %} active{% endif %}" href="{{ link.href }}">{{ link.label }}</a>
+            {% endfor %}
+          </div>
+          <div class="links mobile-links">
+            {% for link in nav_links %}
+              <a class="pill{% if link.active %} active{% endif %}" href="{{ link.href }}">{{ link.label }}</a>
+            {% endfor %}
+          </div>
+        </div>
+      {% endif %}
+      {% if message %}
+        <div class="msg">{{ message }}</div>
+      {% endif %}
+      {% block content %}{% endblock %}
+    </div>
   </div>
 </body>
 </html>
