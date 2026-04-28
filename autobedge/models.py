@@ -82,3 +82,16 @@ class PlanningStatusSnapshot:
     success: bool = False
     message: str = ""
     timestamp: str = ""
+
+
+@dataclass
+class CoremPresenceEntry:
+    id: int = 0
+    timestamp: str = ""
+    address: str = ""
+    site_name: str = ""
+    full_name: str = ""
+    site_id: int = 0
+    badge_type: str = ""
+    user_id: int = 0
+    zone_id: str = ""

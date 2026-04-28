@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import os
 import secrets
+from calendar import monthrange
 from datetime import datetime, timezone
 from urllib.parse import urlencode
 
 from flask import Flask, Response, redirect, render_template, request, session, url_for
 
-from .models import DailyScheduleSnapshot, NtfySettings, SchedulerSettings, UserProfile
+from .corem_api import CoremApiManager
+from .models import CoremPresenceEntry, DailyScheduleSnapshot, NtfySettings, SchedulerSettings, UserProfile
 from .notification_manager import NotificationManager
 from .scheduler import SchedulerManager
 from .time_manager import NTPManager
@@ -21,12 +23,14 @@ class WebServerManager:
         ntp_manager: NTPManager,
         scheduler_manager: SchedulerManager,
         notification_manager: NotificationManager,
+        corem_api: CoremApiManager,
         dry_run: bool,
     ) -> None:
         self.user_manager = user_manager
         self.ntp_manager = ntp_manager
         self.scheduler_manager = scheduler_manager
         self.notification_manager = notification_manager
+        self.corem_api = corem_api
         self.dry_run = dry_run
 
     def create_app(self) -> Flask:
@@ -75,6 +79,13 @@ class WebServerManager:
             if planning_status.pending:
                 return self._planning_pending_page(user, planning_status.message)
             return self._dashboard_page(user, request.args.get("msg", ""))
+
+        @app.get("/calendar")
+        def calendar_page() -> str | Response:
+            user = self._require_auth()
+            if not isinstance(user, UserProfile):
+                return user
+            return self._calendar_page(user, request.args.get("msg", ""))
 
         @app.post("/dashboard/scheduler/replan")
         def dashboard_replan() -> Response:
@@ -321,7 +332,7 @@ class WebServerManager:
         if user is None:
             return []
         current_path = request.path
-        links = [self._nav_link("/dashboard", "Dashboard", current_path)]
+        links = [self._nav_link("/dashboard", "Dashboard", current_path), self._nav_link("/calendar", "Calendario", current_path)]
         if not user.is_admin:
             links.extend([self._nav_link("/settings", "Impostazioni", current_path), self._nav_link("/pauses", "Pause", current_path)])
         if user.is_admin:
@@ -350,6 +361,46 @@ class WebServerManager:
         logs.sort(key=lambda row: row["entry"].timestamp, reverse=True)
         last_planned_at = max((entry.planned_at for entry in schedules if entry.planned_at), default="")
         return self._render("dashboard.html", "Dashboard", user, message, schedules=schedules, logs=logs[:30], last_planned_at=last_planned_at)
+
+    def _calendar_page(self, user: UserProfile, message: str) -> str:
+        selected_month = self._normalize_month_value(request.args.get("month", ""))
+        corem_users = self.user_manager.get_corem_enabled_users()
+        selected_user = user
+        selected_user_id = user.id
+        page_message = message
+
+        if user.is_admin:
+            selected_user_id = self._to_int(request.args.get("user_id"), 0)
+            if selected_user_id <= 0 and corem_users:
+                selected_user_id = corem_users[0].id
+            selected_user = next((candidate for candidate in corem_users if candidate.id == selected_user_id), user)
+            if selected_user not in corem_users:
+                selected_user = user
+
+        presences: list[CoremPresenceEntry] = []
+        if selected_user.corem_user_id <= 0:
+            page_message = page_message or ("Seleziona un utente Corem." if user.is_admin else "Configura prima l'utente Corem nelle impostazioni.")
+        else:
+            start_date, end_date = self._month_bounds(selected_month)
+            ok, presences, error = self.corem_api.fetch_presences(selected_user, start_date, end_date)
+            if not ok:
+                page_message = page_message or error
+
+        month_label, weeks, summary = self._build_presence_calendar(selected_month, presences)
+        return self._render(
+            "calendar.html",
+            "Calendario",
+            user,
+            page_message,
+            corem_users=corem_users,
+            selected_corem_user_id=selected_user_id,
+            selected_month=selected_month,
+            selected_user=selected_user,
+            month_label=month_label,
+            weekday_labels=["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"],
+            presence_weeks=weeks,
+            presence_summary=summary,
+        )
 
     def _settings_page(self, user: UserProfile, message: str) -> str:
         return self._render("settings.html", "Impostazioni", user, message, day_labels=["Lun", "Mar", "Mer", "Gio", "Ven"])
@@ -431,3 +482,94 @@ class WebServerManager:
         if epoch <= 0:
             return "-"
         return datetime.fromtimestamp(epoch, self.ntp_manager.tz).strftime("%d/%m/%Y %H:%M")
+
+    def _build_presence_calendar(self, month_value: str, presences: list[CoremPresenceEntry]) -> tuple[str, list[list[dict[str, object]]], dict[str, object]]:
+        year = int(month_value[:4])
+        month = int(month_value[5:7])
+        days_in_month = monthrange(year, month)[1]
+        today = self.ntp_manager.get_current_date()
+        entries_by_date: dict[str, list[dict[str, str]]] = {}
+        badge_type_counts: dict[str, int] = {}
+        first_badge = ""
+        last_badge = ""
+
+        for presence in presences:
+            parsed = self._parse_corem_timestamp(presence.timestamp)
+            date_key = parsed.strftime("%Y-%m-%d") if parsed else presence.timestamp[:10]
+            if not date_key:
+                continue
+            entry = {
+                "time": parsed.strftime("%H:%M") if parsed else presence.timestamp[11:16],
+                "badge_type": presence.badge_type or "SCONOSCIUTO",
+                "site_name": presence.site_name or "-",
+                "address": presence.address,
+            }
+            entries_by_date.setdefault(date_key, []).append(entry)
+            badge_type_counts[entry["badge_type"]] = badge_type_counts.get(entry["badge_type"], 0) + 1
+            badge_timestamp = parsed.strftime("%d/%m %H:%M") if parsed else presence.timestamp[:16].replace("T", " ")
+            if not first_badge or badge_timestamp < first_badge:
+                first_badge = badge_timestamp
+            if not last_badge or badge_timestamp > last_badge:
+                last_badge = badge_timestamp
+
+        for day_entries in entries_by_date.values():
+            day_entries.sort(key=lambda item: item["time"])
+
+        cells: list[dict[str, object]] = []
+        first_weekday = datetime.strptime(f"{month_value}-01", "%Y-%m-%d").weekday()
+        for _ in range(first_weekday):
+            cells.append({"in_month": False})
+
+        for day in range(1, days_in_month + 1):
+            date_value = f"{month_value}-{day:02d}"
+            day_entries = entries_by_date.get(date_value, [])
+            cells.append(
+                {
+                    "in_month": True,
+                    "date": date_value,
+                    "day_number": day,
+                    "is_today": date_value == today,
+                    "is_weekend": datetime.strptime(date_value, "%Y-%m-%d").weekday() >= 5,
+                    "entry_count": len(day_entries),
+                    "first_time": day_entries[0]["time"] if day_entries else "",
+                    "last_time": day_entries[-1]["time"] if day_entries else "",
+                    "entries": day_entries,
+                }
+            )
+
+        while len(cells) % 7:
+            cells.append({"in_month": False})
+
+        weeks = [cells[index:index + 7] for index in range(0, len(cells), 7)]
+        month_names = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"]
+        summary = {
+            "total_entries": len(presences),
+            "days_with_entries": sum(1 for entries in entries_by_date.values() if entries),
+            "first_badge": first_badge or "-",
+            "last_badge": last_badge or "-",
+            "badge_types": [{"label": label, "count": count} for label, count in sorted(badge_type_counts.items())],
+        }
+        return f"{month_names[month - 1]} {year}", weeks, summary
+
+    def _normalize_month_value(self, value: str) -> str:
+        fallback = self.ntp_manager.get_current_date()[:7]
+        candidate = (value or fallback).strip()
+        try:
+            parsed = datetime.strptime(f"{candidate}-01", "%Y-%m-%d")
+        except ValueError:
+            parsed = datetime.strptime(f"{fallback}-01", "%Y-%m-%d")
+        return parsed.strftime("%Y-%m")
+
+    @staticmethod
+    def _month_bounds(month_value: str) -> tuple[str, str]:
+        year = int(month_value[:4])
+        month = int(month_value[5:7])
+        last_day = monthrange(year, month)[1]
+        return f"{month_value}-01", f"{month_value}-{last_day:02d}"
+
+    @staticmethod
+    def _parse_corem_timestamp(value: str) -> datetime | None:
+        try:
+            return datetime.strptime(value[:19], "%Y-%m-%dT%H:%M:%S")
+        except ValueError:
+            return None

@@ -1,0 +1,83 @@
+[
+  {
+    "id": 1,
+    "username": "admin",
+    "password_hash": "240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9",
+    "is_admin": true,
+    "corem_username": "",
+    "corem_password": "",
+    "corem_user_id": 0,
+    "jwt_token": "",
+    "refresh_token": "",
+    "ntfy_enabled": false,
+    "ntfy_topic": "",
+    "home_lat": 0.0,
+    "home_lon": 0.0,
+    "home_accuracy": 50,
+    "office_lat": 0.0,
+    "office_lon": 0.0,
+    "office_accuracy": 50,
+    "office_days": [],
+    "scheduled_pauses": [],
+    "badge_log": []
+  },
+  {
+    "id": 2,
+    "username": "caluser",
+    "password_hash": "ecd71870d1963316a97e3ac3408c9835ad8cf0f3c1bc703527c30265534f75ae",
+    "is_admin": false,
+    "corem_username": "x",
+    "corem_password": "y",
+    "corem_user_id": 591,
+    "jwt_token": "",
+    "refresh_token": "",
+    "ntfy_enabled": false,
+    "ntfy_topic": "",
+    "home_lat": 0.0,
+    "home_lon": 0.0,
+    "home_accuracy": 50,
+    "office_lat": 0.0,
+    "office_lon": 0.0,
+    "office_accuracy": 50,
+    "office_days": [],
+    "scheduled_pauses": [],
+    "badge_log": [
+      {
+        "timestamp": "2026-04-28T15:13:59+0000",
+        "type": "SYS",
+        "success": false,
+        "note": "HTTP 401 durante login"
+      },
+      {
+        "timestamp": "2026-04-28T15:13:59+0000",
+        "type": "SYS",
+        "success": false,
+        "note": "HTTP 401 durante login"
+      },
+      {
+        "timestamp": "2026-04-28T15:13:59+0000",
+        "type": "SYS",
+        "success": false,
+        "note": "HTTP 401 durante login"
+      },
+      {
+        "timestamp": "2026-04-28T15:14:29+0000",
+        "type": "SYS",
+        "success": false,
+        "note": "HTTP 401 durante login"
+      },
+      {
+        "timestamp": "2026-04-28T15:14:29+0000",
+        "type": "SYS",
+        "success": false,
+        "note": "HTTP 401 durante login"
+      },
+      {
+        "timestamp": "2026-04-28T15:14:29+0000",
+        "type": "SYS",
+        "success": false,
+        "note": "HTTP 401 durante login"
+      }
+    ]
+  }
+]

@@ -8,7 +8,7 @@ from typing import Any
 
 import requests
 
-from .models import DailyAttendancePolicy, UserProfile
+from .models import CoremPresenceEntry, DailyAttendancePolicy, UserProfile
 from .user_manager import UserManager
 
 LOG = logging.getLogger(__name__)
@@ -95,6 +95,44 @@ class CoremApiManager:
             if isinstance(item, dict):
                 self._apply_event_to_policy(policy, item, date)
         return True, policy, ""
+
+    def fetch_presences(self, user: UserProfile, start_date: str, end_date: str) -> tuple[bool, list[CoremPresenceEntry], str]:
+        if user.corem_user_id <= 0:
+            message = "utenteId Corem non configurato"
+            self._log_failure(user, "SYS", message)
+            return False, [], message
+        path = f"/presenze?data_inizio={start_date}&data_fine={end_date}&utente_id={user.corem_user_id}"
+        response, error = self._execute_authorized_request(user, "GET", path, None, "SYS", "recupero presenze")
+        if response is None:
+            return False, [], error
+        try:
+            data = response.json()
+        except ValueError:
+            message = "JSON presenze non valido"
+            self._log_failure(user, "SYS", message)
+            return False, [], message
+        if not isinstance(data, list):
+            message = "JSON presenze non valido"
+            self._log_failure(user, "SYS", message)
+            return False, [], message
+        presences = []
+        for item in data:
+            if not isinstance(item, dict):
+                continue
+            presences.append(
+                CoremPresenceEntry(
+                    id=int(item.get("id", 0) or 0),
+                    timestamp=str(item.get("data") or ""),
+                    address=str(item.get("indirizzo") or ""),
+                    site_name=str(item.get("nomeSede") or ""),
+                    full_name=str(item.get("nominativo") or ""),
+                    site_id=int(item.get("sedeId", 0) or 0),
+                    badge_type=str(item.get("tipoBeggiatura") or ""),
+                    user_id=int(item.get("utenteId", 0) or 0),
+                    zone_id=str(item.get("zoneId") or ""),
+                )
+            )
+        return True, presences, ""
 
     def submit_badge(self, user: UserProfile, in_office: bool, type_: str) -> tuple[bool, str]:
         payload = {
@@ -255,4 +293,3 @@ class CoremApiManager:
     @staticmethod
     def _append_policy_note(policy: DailyAttendancePolicy, note: str) -> None:
         policy.note = note if not policy.note else f"{policy.note} | {note}"
-
