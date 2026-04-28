@@ -512,6 +512,7 @@ class WebServerManager:
             entry = {
                 "kind": "presence",
                 "time": parsed.strftime("%H:%M") if parsed else presence.timestamp[11:16],
+                "compact_time": parsed.strftime("%H:%M") if parsed else presence.timestamp[11:16],
                 "sort_key": parsed.strftime("%H:%M:%S") if parsed else f"{presence.timestamp[11:19]}",
                 "range_start": parsed.strftime("%H:%M") if parsed else presence.timestamp[11:16],
                 "range_end": parsed.strftime("%H:%M") if parsed else presence.timestamp[11:16],
@@ -548,6 +549,7 @@ class WebServerManager:
             entry = {
                 "kind": "event",
                 "time": f"{start_time} - {end_time}".strip(" -"),
+                "compact_time": self._compact_range_label(start_time, end_time),
                 "sort_key": start.strftime("%H:%M:%S") if start else f"{event.start_at[11:19]}",
                 "range_start": start_time,
                 "range_end": end_time,
@@ -637,3 +639,9 @@ class WebServerManager:
             month -= 12
             year += 1
         return f"{year:04d}-{month:02d}"
+
+    @staticmethod
+    def _compact_range_label(start_time: str, end_time: str) -> str:
+        if len(start_time) >= 5 and len(end_time) >= 5:
+            return f"{start_time[:2]}-{end_time[:2]}"
+        return start_time or end_time or "-"

@@ -37,7 +37,11 @@
         </form>
       {% endif %}
     </div>
-    <div class="calendar-board">
+    <div class="calendar-mobile-mode" id="calendarMobileMode">
+      <button type="button" class="calendar-mobile-mode-button is-active" data-calendar-mode="detail" aria-pressed="true">Dettaglio</button>
+      <button type="button" class="calendar-mobile-mode-button" data-calendar-mode="compact" aria-pressed="false">Mese</button>
+    </div>
+    <div class="calendar-board calendar-board-detailed" data-calendar-board="detail">
       <div class="calendar-weekdays">
         {% for label in weekday_labels %}
           <div class="calendar-weekday">{{ label }}</div>
@@ -85,6 +89,35 @@
               </section>
             {% else %}
               <div class="calendar-day calendar-day-empty" aria-hidden="true"></div>
+            {% endif %}
+          {% endfor %}
+        {% endfor %}
+      </div>
+    </div>
+    <div class="calendar-board calendar-board-compact" data-calendar-board="compact" hidden>
+      <div class="calendar-weekdays calendar-weekdays-compact">
+        {% for label in weekday_labels %}
+          <div class="calendar-weekday calendar-weekday-compact">{{ label[0] }}</div>
+        {% endfor %}
+      </div>
+      <div class="calendar-grid calendar-grid-compact">
+        {% for week in presence_weeks %}
+          {% for day in week %}
+            {% if day.in_month %}
+              <section class="calendar-day-compact{% if day.is_today %} is-today{% endif %}{% if day.is_holiday %} is-holiday{% endif %}">
+                <div class="calendar-day-compact-head">
+                  <span class="calendar-day-compact-number">{{ day.day_number }}</span>
+                </div>
+                <div class="calendar-day-compact-list">
+                  {% for entry in day.entries[:4] %}
+                    <div class="calendar-entry-compact{% if entry.kind == 'event' %}{% if entry.is_confirmed %} calendar-entry-compact-event-confirmed{% else %} calendar-entry-compact-event{% endif %}{% elif entry.presence_direction == 'IN' %} calendar-entry-compact-in{% elif entry.presence_direction == 'OUT' %} calendar-entry-compact-out{% endif %}">
+                      {{ entry.compact_time }}
+                    </div>
+                  {% endfor %}
+                </div>
+              </section>
+            {% else %}
+              <div class="calendar-day-compact calendar-day-compact-empty" aria-hidden="true"></div>
             {% endif %}
           {% endfor %}
         {% endfor %}
@@ -157,5 +190,32 @@
         closeCalendarInfo();
       }
     });
+
+    (function() {
+      const modeWrap = document.getElementById('calendarMobileMode');
+      if (!modeWrap) return;
+
+      const buttons = Array.from(modeWrap.querySelectorAll('[data-calendar-mode]'));
+      const boards = Array.from(document.querySelectorAll('[data-calendar-board]'));
+
+      function setMode(mode) {
+        buttons.forEach(function(button) {
+          const active = button.dataset.calendarMode === mode;
+          button.classList.toggle('is-active', active);
+          button.setAttribute('aria-pressed', active ? 'true' : 'false');
+        });
+        boards.forEach(function(board) {
+          board.hidden = board.dataset.calendarBoard !== mode;
+        });
+      }
+
+      buttons.forEach(function(button) {
+        button.addEventListener('click', function() {
+          setMode(button.dataset.calendarMode || 'detail');
+        });
+      });
+
+      setMode('detail');
+    })();
   </script>
 {% endblock %}
