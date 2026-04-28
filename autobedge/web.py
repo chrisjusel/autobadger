@@ -544,6 +544,8 @@ class WebServerManager:
                 "sort_key": start.strftime("%H:%M:%S") if start else f"{event.start_at[11:19]}",
                 "range_start": start_time,
                 "range_end": end_time,
+                "status": event.status or "",
+                "is_confirmed": (event.status or "").strip().lower() == "confermato",
                 "address": "",
                 "modal_title": "Dettaglio evento",
                 "detail_label": "Localizzazione",
