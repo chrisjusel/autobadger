@@ -44,7 +44,7 @@
             <td>
               <a href="{{ url_for('admin_user', id=candidate.id) }}">Modifica</a>
               {% if not candidate.is_admin %}
-                | <a href="{{ url_for('admin_delete', id=candidate.id) }}">Elimina</a>
+                | <a href="{{ url_for('admin_delete', id=candidate.id) }}" data-confirm="Sei sicuro di voler eliminare l'utente {{ candidate.username }}?">Elimina</a>
               {% endif %}
             </td>
           </tr>

@@ -16,7 +16,7 @@
           {% for pause in user.scheduled_pauses %}
             <tr>
               <td data-label="Data">{{ fmt_date(pause) }}</td>
-              <td data-label="Azioni"><a class="btn danger" href="{{ url_for('pauses_delete', date=pause) }}">Rimuovi</a></td>
+              <td data-label="Azioni"><a class="btn danger" href="{{ url_for('pauses_delete', date=pause) }}" data-confirm="Sei sicuro di voler rimuovere questa pausa?">Rimuovi</a></td>
             </tr>
           {% else %}
             <tr class="empty-row"><td colspan="2">Nessuna pausa configurata.</td></tr>

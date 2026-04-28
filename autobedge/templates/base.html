@@ -19,14 +19,16 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   {% block head %}{% endblock %}
 </head>
-<body>
+<body class="{% block body_class %}{% endblock %}">
   <div class="app-shell">
-    <div class="pull-refresh" aria-hidden="true">
-      <svg class="pull-refresh-icon" viewBox="0 0 24 24">
-        <path d="M20 12a8 8 0 1 1-2.34-5.66"/>
-        <path d="M20 4v6h-6"/>
-      </svg>
-    </div>
+    {% if user %}
+      <div class="pull-refresh" aria-hidden="true">
+        <svg class="pull-refresh-icon" viewBox="0 0 24 24">
+          <path d="M20 12a8 8 0 1 1-2.34-5.66"/>
+          <path d="M20 4v6h-6"/>
+        </svg>
+      </div>
+    {% endif %}
     {% if dry_run %}
       <div class="banner">MODALITA' DRY RUN ATTIVA</div>
     {% endif %}
@@ -34,9 +36,12 @@
       {% if user %}
         <div class="card nav">
           <div class="brand">
-            <div class="logo">
-              <span class="logo-main">corem badger</span>
-              <span class="logo-sub">py version</span>
+            <div class="brand-mark">
+              <img class="brand-logo" src="{{ url_for('static', filename='img/logo-badge.png') }}" alt="" aria-hidden="true">
+              <div class="logo">
+                <span class="logo-main">corem badger</span>
+                <span class="logo-sub">py version</span>
+              </div>
             </div>
             <div class="chips">
               <span class="chip chip-user">{{ user.username }}</span>
@@ -47,21 +52,147 @@
           <label class="hamburger" for="nav-toggle" aria-label="Menu"><span></span></label>
           <div class="links desktop-links">
             {% for link in nav_links %}
-              <a class="pill{% if link.active %} active{% endif %}" href="{{ link.href }}">{{ link.label }}</a>
+              <a class="pill{% if link.active %} active{% endif %}" href="{{ link.href }}"{% if "Logout" in link.label %} data-confirm="Sei sicuro di voler effettuare il logout?"{% endif %}>{{ link.label }}</a>
             {% endfor %}
           </div>
           <div class="links mobile-links">
             {% for link in nav_links %}
-              <a class="pill{% if link.active %} active{% endif %}" href="{{ link.href }}">{{ link.label }}</a>
+              <a class="pill{% if link.active %} active{% endif %}" href="{{ link.href }}"{% if "Logout" in link.label %} data-confirm="Sei sicuro di voler effettuare il logout?"{% endif %}>{{ link.label }}</a>
             {% endfor %}
           </div>
         </div>
       {% endif %}
-      {% if message %}
-        <div class="msg">{{ message }}</div>
+      {% if message and request.endpoint != 'login' %}
+        <div class="msg {% if 'errore' in message.lower() or 'non valida' in message.lower() or 'logout' in message.lower() %}msg-error{% endif %}">{{ message }}</div>
       {% endif %}
       {% block content %}{% endblock %}
     </div>
+    {% if user %}
+      <nav class="bottom-nav" aria-label="Navigazione principale">
+        {% for link in nav_links %}
+          <a class="bottom-nav-item{% if "Logout" in link.label %} bottom-nav-logout{% endif %}{% if request.path == link.href or link.active %} active{% endif %}" href="{{ link.href }}"{% if "Logout" in link.label %} data-confirm="Sei sicuro di voler effettuare il logout?"{% endif %}>
+            <span class="bottom-nav-icon" aria-hidden="true">
+              {% if "Dashboard" in link.label %}
+                <svg viewBox="0 0 24 24">
+                  <path d="m3 9 9-7 9 7"/>
+                  <path d="M9 22V12h6v10"/>
+                  <path d="M21 9v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9"/>
+                </svg>
+              {% elif "Impostazioni" in link.label %}
+                <svg viewBox="0 0 24 24">
+                  <line x1="21" x2="14" y1="4" y2="4"/>
+                  <line x1="10" x2="3" y1="4" y2="4"/>
+                  <line x1="21" x2="12" y1="12" y2="12"/>
+                  <line x1="8" x2="3" y1="12" y2="12"/>
+                  <line x1="21" x2="16" y1="20" y2="20"/>
+                  <line x1="12" x2="3" y1="20" y2="20"/>
+                  <line x1="14" x2="14" y1="2" y2="6"/>
+                  <line x1="8" x2="8" y1="10" y2="14"/>
+                  <line x1="16" x2="16" y1="18" y2="22"/>
+                </svg>
+              {% elif "Pausa" in link.label or "Pause" in link.label %}
+                <svg viewBox="0 0 24 24">
+                  <circle cx="12" cy="12" r="10"/>
+                  <path d="M10 15V9"/>
+                  <path d="M14 15V9"/>
+                </svg>
+              {% elif "Utenti" in link.label or "Admin" in link.label %}
+                <svg viewBox="0 0 24 24">
+                  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                  <circle cx="9" cy="7" r="4"/>
+                  <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                </svg>
+              {% elif "Diagnostica" in link.label %}
+                <svg viewBox="0 0 24 24">
+                  <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+                </svg>
+              {% elif "Logout" in link.label %}
+                <svg viewBox="0 0 24 24">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                  <path d="M16 17l5-5-5-5"/>
+                  <path d="M21 12H9"/>
+                </svg>
+              {% else %}
+                <svg viewBox="0 0 24 24">
+                  <circle cx="12" cy="12" r="10"/>
+                </svg>
+              {% endif %}
+            </span>
+            <span class="bottom-nav-label">{{ link.label }}</span>
+          </a>
+        {% endfor %}
+      </nav>
+    {% endif %}
   </div>
+  <div class="confirm-modal" id="confirmModal" aria-hidden="true">
+    <div class="confirm-backdrop" data-confirm-cancel></div>
+    <div class="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+      <h2 id="confirmTitle">Conferma azione</h2>
+      <p id="confirmMessage">Sei sicuro di voler procedere?</p>
+      <div class="confirm-actions">
+        <button type="button" class="btn-ghost-neutral" data-confirm-cancel>No</button>
+        <button type="button" class="btn-ghost-danger" id="confirmAccept">Si</button>
+      </div>
+    </div>
+  </div>
+  <script>
+    (function() {
+      const modal = document.getElementById('confirmModal');
+      const message = document.getElementById('confirmMessage');
+      const accept = document.getElementById('confirmAccept');
+      let pendingAction = null;
+
+      function closeConfirm() {
+        modal.classList.remove('visible');
+        modal.setAttribute('aria-hidden', 'true');
+        pendingAction = null;
+      }
+
+      function openConfirm(text, action) {
+        message.textContent = text || 'Sei sicuro di voler procedere?';
+        pendingAction = action;
+        modal.classList.add('visible');
+        modal.setAttribute('aria-hidden', 'false');
+        accept.focus();
+      }
+
+      document.addEventListener('click', function(event) {
+        const cancel = event.target.closest('[data-confirm-cancel]');
+        if (cancel) {
+          closeConfirm();
+          return;
+        }
+
+        const target = event.target.closest('[data-confirm]');
+        if (!target) return;
+
+        event.preventDefault();
+        openConfirm(target.dataset.confirm, function() {
+          if (target.tagName === 'A') {
+            window.location.href = target.href;
+            return;
+          }
+
+          const form = target.closest('form');
+          if (form) {
+            form.requestSubmit(target);
+          }
+        });
+      });
+
+      accept.addEventListener('click', function() {
+        const action = pendingAction;
+        closeConfirm();
+        if (action) action();
+      });
+
+      document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape' && modal.classList.contains('visible')) {
+          closeConfirm();
+        }
+      });
+    })();
+  </script>
 </body>
 </html>

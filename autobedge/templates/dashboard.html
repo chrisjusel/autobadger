@@ -13,11 +13,27 @@
         </form>
         {% if not user.is_admin %}
           <form method="post" action="{{ url_for('pauses_cancel_today') }}">
-            <button class="danger">Skippa le pianificazioni odierne</button>
+            <button class="btn-ghost-danger" data-confirm="Sei sicuro di voler skippare le pianificazioni odierne?">Skippa le pianificazioni odierne</button>
           </form>
         {% endif %}
       </div>
     </div>
+    {% if schedules %}
+      {% set entry = schedules[0] %}
+      <div class="chips" style="margin-bottom: 14px;">
+        <span class="chip {{ 'chip-user' if entry.in_office else 'chip-mode-remote' }}">{{ "In sede" if entry.in_office else "Telelavoro" }}</span>
+        {% if entry.badge_in_executed %}
+          <span class="chip chip-user">Badge IN ✓</span>
+        {% elif entry.badge_in_at %}
+          <span class="chip chip-pending">Badge IN ⏳</span>
+        {% endif %}
+        {% if entry.badge_out_executed %}
+          <span class="chip chip-user">Badge OUT ✓</span>
+        {% elif entry.badge_out_at %}
+          <span class="chip chip-pending">Badge OUT ⏳</span>
+        {% endif %}
+      </div>
+    {% endif %}
     <table>
       <thead>
         <tr>
@@ -36,16 +52,21 @@
           <tr class="schedule-row">
             <td data-label="Data">{{ fmt_date(entry.date) }}</td>
             <td data-label="Utente">{{ entry.username }}</td>
-            <td data-label="Elaborata">{{ fmt_datetime(entry.planned_at) }}</td>
+            <td class="detail-row" data-label="ELABORATA">{{ fmt_datetime(entry.planned_at) }}</td>
             <td data-label="Modalita">{{ "In sede" if entry.in_office else "Telelavoro" }}</td>
             <td data-label="Badge IN">{{ schedule_cell(entry.badge_in_at, entry.skip_badge_in, entry.badge_in_executed) }}</td>
             <td data-label="Badge OUT">{{ schedule_cell(entry.badge_out_at, entry.skip_badge_out, entry.badge_out_executed) }}</td>
-            <td data-label="Note">{{ entry.note or "-" }}</td>
-            <td data-label="Azioni">
+            <td class="detail-row" data-label="NOTE">{{ entry.note or "-" }}</td>
+            <td class="detail-toggle-row" colspan="8">
+              <button type="button" class="detail-toggle-btn" onclick="toggleDetails(this)">
+                Mostra dettagli ▾
+              </button>
+            </td>
+            <td data-label="AZIONI">
               <form class="inlineform" method="post" action="{{ url_for('dashboard_scheduler_delete') }}">
                 <input type="hidden" name="date" value="{{ entry.date }}">
                 <input type="hidden" name="user_id" value="{{ entry.user_id }}">
-                <button class="danger iconbtn" title="Cancella">X</button>
+                <button class="danger iconbtn" title="Cancella" data-confirm="Sei sicuro di voler cancellare questa pianificazione?">X</button>
               </form>
             </td>
           </tr>
@@ -69,7 +90,7 @@
       </thead>
       <tbody>
         {% for row in logs %}
-          <tr>
+          <tr data-event-index="{{ loop.index0 }}">
             <td data-label="Data/Ora">{{ fmt_datetime(row.entry.timestamp) }}</td>
             <td data-label="Utente">{{ row.username }}</td>
             <td data-label="Tipo">{{ row.entry.type }}</td>
@@ -81,5 +102,46 @@
         {% endfor %}
       </tbody>
     </table>
+    <div class="events-load-more-wrap" id="eventsLoadMoreWrap" style="display:none; text-align:center; margin-top:14px;">
+      <button type="button" class="btn-ghost-load-more" id="eventsLoadMoreBtn" onclick="loadMoreEvents()">
+        Carica altri ▾
+      </button>
+    </div>
   </div>
+  <script>
+    function toggleDetails(btn) {
+      const row = btn.closest('tr');
+      const detailRows = row.querySelectorAll('.detail-row');
+      const isOpen = detailRows.length > 0 && detailRows[0].classList.contains('visible');
+      detailRows.forEach((detailRow) => detailRow.classList.toggle('visible', !isOpen));
+      btn.textContent = isOpen ? 'Mostra dettagli ▾' : 'Nascondi ▴';
+    }
+
+    (function() {
+      const INITIAL_COUNT = 5;
+      const LOAD_MORE_COUNT = 10;
+
+      function initEvents() {
+        if (window.innerWidth > 800) return;
+        const rows = document.querySelectorAll('[data-event-index]');
+        if (rows.length <= INITIAL_COUNT) return;
+        rows.forEach((row, index) => {
+          if (index >= INITIAL_COUNT) row.style.display = 'none';
+        });
+        document.getElementById('eventsLoadMoreWrap').style.display = 'block';
+      }
+
+      window.loadMoreEvents = function() {
+        const rows = document.querySelectorAll('[data-event-index]');
+        const hidden = Array.from(rows).filter((row) => row.style.display === 'none');
+        const toShow = hidden.slice(0, LOAD_MORE_COUNT);
+        toShow.forEach((row) => row.style.display = '');
+        if (hidden.length - toShow.length === 0) {
+          document.getElementById('eventsLoadMoreWrap').style.display = 'none';
+        }
+      };
+
+      document.addEventListener('DOMContentLoaded', initEvents);
+    })();
+  </script>
 {% endblock %}
