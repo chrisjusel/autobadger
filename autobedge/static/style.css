@@ -931,11 +931,14 @@ a.pill:active {
 }
 
 .calendar-day {
-  min-height: 220px;
+  height: 220px;
   padding: 12px;
   border: 1px solid var(--line);
   border-radius: 18px;
   background: rgba(255, 255, 255, .04);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .calendar-day.is-today {
@@ -981,6 +984,10 @@ a.pill:active {
 .calendar-entry-list {
   display: grid;
   gap: 8px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 4px;
 }
 
 .calendar-entry {
@@ -1054,6 +1061,12 @@ a.pill:active {
   display: flex;
   align-items: center;
   gap: 12px;
+  padding-right: 44px;
+  min-height: 36px;
+}
+
+.calendar-info-head h2 {
+  margin: 0;
 }
 
 .calendar-info-close {
@@ -1097,7 +1110,8 @@ a.pill:active {
 }
 
 .calendar-empty {
-  margin-top: 28px;
+  margin-top: auto;
+  margin-bottom: auto;
   font-size: .84rem;
 }
 
@@ -1257,7 +1271,7 @@ a.pill:active {
   }
 
   .calendar-day {
-    min-height: 180px;
+    height: 180px;
   }
 
   .calendar-day-head {
