@@ -82,7 +82,7 @@ class WebServerManager:
 
         @app.get("/calendar")
         def calendar_page() -> str | Response:
-            user = self._require_auth()
+            user = self._require_non_admin()
             if not isinstance(user, UserProfile):
                 return user
             return self._calendar_page(user, request.args.get("msg", ""))
@@ -332,9 +332,9 @@ class WebServerManager:
         if user is None:
             return []
         current_path = request.path
-        links = [self._nav_link("/dashboard", "Dashboard", current_path), self._nav_link("/calendar", "Calendario", current_path)]
+        links = [self._nav_link("/dashboard", "Dashboard", current_path)]
         if not user.is_admin:
-            links.extend([self._nav_link("/settings", "Impostazioni", current_path), self._nav_link("/pauses", "Pause", current_path)])
+            links.extend([self._nav_link("/calendar", "Calendario", current_path), self._nav_link("/settings", "Impostazioni", current_path), self._nav_link("/pauses", "Pause", current_path)])
         if user.is_admin:
             links.extend([self._nav_link("/admin", "Admin", current_path), self._nav_link("/diagnostics", "Diagnostica", current_path)])
         links.append(self._nav_link("/logout", "Logout", current_path))

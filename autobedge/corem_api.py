@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import calendar
 import logging
+import os
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 
 import requests
@@ -97,6 +98,8 @@ class CoremApiManager:
         return True, policy, ""
 
     def fetch_presences(self, user: UserProfile, start_date: str, end_date: str) -> tuple[bool, list[CoremPresenceEntry], str]:
+        if os.environ.get("AUTOBEDGE_MOCK_PRESENCES", "").strip() == "1":
+            return True, self._mock_presences(user, start_date, end_date), ""
         if user.corem_user_id <= 0:
             message = "utenteId Corem non configurato"
             self._log_failure(user, "SYS", message)
@@ -133,6 +136,72 @@ class CoremApiManager:
                 )
             )
         return True, presences, ""
+
+    def _mock_presences(self, user: UserProfile, start_date: str, end_date: str) -> list[CoremPresenceEntry]:
+        start = datetime.strptime(start_date, "%Y-%m-%d")
+        end = datetime.strptime(end_date, "%Y-%m-%d")
+        addresses = [
+            "P.za degli Artisti, 11, 80129 Napoli NA, Italy",
+            "Via Giovanni Porzio, G1, 80143 Napoli NA, Italy",
+            "Viale Raffaello, 31, 80135 Napoli NA, Italy",
+            "Centro Direzionale, Is.C2 - Sc.A, 80143 Napoli NA, Italy",
+        ]
+        presences: list[CoremPresenceEntry] = []
+        current = start
+        mock_id = 2000000
+        weekday_index = 0
+        while current <= end:
+            if current.weekday() < 5:
+                base_address = addresses[weekday_index % len(addresses)]
+                in_time = current.replace(hour=8 + (weekday_index % 2), minute=52 + (weekday_index % 6), second=0)
+                out_time = current.replace(hour=17 + (weekday_index % 2), minute=50 + (weekday_index % 7), second=0)
+                presences.append(
+                    CoremPresenceEntry(
+                        id=mock_id,
+                        timestamp=in_time.strftime("%Y-%m-%dT%H:%M:%S"),
+                        address=base_address,
+                        site_name="Ufficio",
+                        full_name=user.username,
+                        site_id=100,
+                        badge_type="PIATTAFORMA",
+                        user_id=user.corem_user_id,
+                        zone_id="Europe/Rome",
+                    )
+                )
+                mock_id += 1
+                if weekday_index % 4 == 2:
+                    extra_time = current.replace(hour=13, minute=10 + (weekday_index % 20), second=0)
+                    presences.append(
+                        CoremPresenceEntry(
+                            id=mock_id,
+                            timestamp=extra_time.strftime("%Y-%m-%dT%H:%M:%S"),
+                            address=addresses[(weekday_index + 1) % len(addresses)],
+                            site_name="Ufficio",
+                            full_name=user.username,
+                            site_id=100,
+                            badge_type="MANUALE",
+                            user_id=user.corem_user_id,
+                            zone_id="Europe/Rome",
+                        )
+                    )
+                    mock_id += 1
+                presences.append(
+                    CoremPresenceEntry(
+                        id=mock_id,
+                        timestamp=out_time.strftime("%Y-%m-%dT%H:%M:%S"),
+                        address=addresses[(weekday_index + 2) % len(addresses)],
+                        site_name="Ufficio",
+                        full_name=user.username,
+                        site_id=100,
+                        badge_type="PIATTAFORMA",
+                        user_id=user.corem_user_id,
+                        zone_id="Europe/Rome",
+                    )
+                )
+                mock_id += 1
+                weekday_index += 1
+            current += timedelta(days=1)
+        return presences
 
     def submit_badge(self, user: UserProfile, in_office: bool, type_: str) -> tuple[bool, str]:
         payload = {

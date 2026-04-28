@@ -931,7 +931,7 @@ a.pill:active {
 }
 
 .calendar-day {
-  height: 220px;
+  height: 170px;
   padding: 12px;
   border: 1px solid var(--line);
   border-radius: 18px;
@@ -988,13 +988,14 @@ a.pill:active {
   min-height: 0;
   overflow-y: auto;
   padding-right: 4px;
+  align-content: start;
 }
 
 .calendar-entry {
   display: block;
   width: 100%;
-  min-height: 0;
-  padding: 10px;
+  min-height: 44px;
+  padding: 8px 10px;
   border: 1px solid rgba(255, 255, 255, .08);
   border-radius: 14px;
   background: rgba(4, 15, 24, .34);
@@ -1058,21 +1059,20 @@ a.pill:active {
 }
 
 .calendar-info-head {
-  display: flex;
-  align-items: center;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
   gap: 12px;
-  padding-right: 44px;
+  width: 100%;
   min-height: 36px;
 }
 
 .calendar-info-head h2 {
   margin: 0;
+  min-width: 0;
 }
 
 .calendar-info-close {
-  position: absolute;
-  top: 12px;
-  right: 12px;
   width: 36px;
   min-width: 36px;
   min-height: 36px;
@@ -1082,6 +1082,8 @@ a.pill:active {
   border: 0;
   background: transparent;
   color: var(--text);
+  justify-self: end;
+  align-self: start;
 }
 
 .calendar-info-close svg,
@@ -1271,7 +1273,7 @@ a.pill:active {
   }
 
   .calendar-day {
-    height: 180px;
+    height: 170px;
   }
 
   .calendar-day-head {
