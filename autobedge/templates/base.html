@@ -167,5 +167,80 @@
       });
     })();
   </script>
+  <div id="pepe-container" aria-hidden="true">
+    <img id="pepe-guy" src="{{ url_for('static', filename='img/pepepe.png') }}" alt="" draggable="false">
+  </div>
+  <script>
+    (function() {
+      const SIZE = 130;
+      const PEEK = 0.80;
+      const VISIBLE_MS = 2800;
+      const SLIDE_IN_MS = 550;
+      const SLIDE_OUT_MS = 380;
+
+      function nextDelay() {
+        return 18000 + Math.random() * 27000;
+      }
+
+      const container = document.getElementById('pepe-container');
+      const img = document.getElementById('pepe-guy');
+
+      if (!container || !img) return;
+
+      function getPosition() {
+        const vh = window.innerHeight;
+        const peekPx = Math.round(SIZE * PEEK);
+
+        const x = -SIZE + peekPx;
+        const y = Math.round(vh * (0.15 + Math.random() * 0.65)) - SIZE / 2;
+        const transformHidden = `translateX(${-peekPx}px) rotate(30deg)`;
+        const transformVisible = 'translateX(0px) rotate(30deg)';
+
+        return { x, y, transformHidden, transformVisible };
+      }
+
+      function showPepe() {
+        const pos = getPosition();
+
+        container.style.left = pos.x + 'px';
+        container.style.top = pos.y + 'px';
+        container.style.transition = 'none';
+        container.style.transform = pos.transformHidden;
+        container.style.opacity = '0';
+        img.style.transform = 'none';
+        container.classList.add('clickable');
+
+        container.offsetHeight;
+
+        container.style.transition = `transform ${SLIDE_IN_MS}ms cubic-bezier(0.34, 1.56, 0.64, 1), opacity ${SLIDE_IN_MS * 0.4}ms ease`;
+        container.style.transform = pos.transformVisible;
+        container.style.opacity = '1';
+
+        let dismissed = false;
+
+        function slideOut() {
+          if (dismissed) return;
+          dismissed = true;
+          container.classList.remove('clickable');
+          container.style.transition = `transform ${SLIDE_OUT_MS}ms cubic-bezier(0.4, 0, 1, 1), opacity ${SLIDE_OUT_MS}ms ease`;
+          container.style.transform = pos.transformHidden;
+          container.style.opacity = '0';
+          setTimeout(scheduleNext, SLIDE_OUT_MS + 100);
+        }
+
+        container.onclick = function() {
+          slideOut();
+        };
+
+        setTimeout(slideOut, VISIBLE_MS);
+      }
+
+      function scheduleNext() {
+        setTimeout(showPepe, nextDelay());
+      }
+
+      setTimeout(showPepe, 8000 + Math.random() * 7000);
+    })();
+  </script>
 </body>
 </html>
