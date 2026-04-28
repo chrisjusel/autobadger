@@ -55,16 +55,20 @@
                   {% endif %}
                 </div>
                 {% if day.is_holiday %}
-                  <div class="calendar-day-holiday">Festivita</div>
+                  <div class="calendar-day-holiday">{{ day.holiday_name }}</div>
                 {% endif %}
                 {% if day.entry_count %}
                   <div class="calendar-entry-list">
                     {% for entry in day.entries[:2] %}
                       <button
                         type="button"
-                        class="calendar-entry"
+                        class="calendar-entry{% if entry.kind == 'event' %} calendar-entry-event{% endif %}"
                         data-entry-time="{{ entry.time }}"
-                        data-entry-address="{{ entry.address or '-' }}"
+                        data-entry-title="{{ entry.modal_title }}"
+                        data-entry-detail-label="{{ entry.detail_label }}"
+                        data-entry-detail-value="{{ entry.detail_value }}"
+                        data-entry-extra-label="{{ entry.extra_label }}"
+                        data-entry-extra-value="{{ entry.extra_value }}"
                         onclick="openCalendarInfo(this)">
                         <div class="calendar-entry-top">
                           <strong>{{ entry.time }}</strong>
@@ -108,12 +112,16 @@
       </div>
       <div class="calendar-info-body">
         <div class="calendar-info-row">
-          <span class="muted">Orario</span>
+          <span class="muted" id="calendarInfoTimeLabel">Orario</span>
           <strong id="calendarInfoTime">-</strong>
         </div>
         <div class="calendar-info-row calendar-info-row-address">
-          <span class="muted">Indirizzo</span>
-          <div id="calendarInfoAddress">-</div>
+          <span class="muted" id="calendarInfoDetailLabel">Indirizzo</span>
+          <div id="calendarInfoDetailValue">-</div>
+        </div>
+        <div class="calendar-info-row calendar-info-row-address" id="calendarInfoExtraRow" hidden>
+          <span class="muted" id="calendarInfoExtraLabel">-</span>
+          <div id="calendarInfoExtraValue">-</div>
         </div>
       </div>
     </div>
@@ -139,12 +147,28 @@
   <script>
     function openCalendarInfo(button) {
       const modal = document.getElementById('calendarInfoModal');
+      const title = document.getElementById('calendarInfoTitle');
+      const timeLabel = document.getElementById('calendarInfoTimeLabel');
       const time = document.getElementById('calendarInfoTime');
-      const address = document.getElementById('calendarInfoAddress');
-      if (!modal || !time || !address) return;
+      const detailLabel = document.getElementById('calendarInfoDetailLabel');
+      const detailValue = document.getElementById('calendarInfoDetailValue');
+      const extraRow = document.getElementById('calendarInfoExtraRow');
+      const extraLabel = document.getElementById('calendarInfoExtraLabel');
+      const extraValue = document.getElementById('calendarInfoExtraValue');
+      if (!modal || !title || !timeLabel || !time || !detailLabel || !detailValue || !extraRow || !extraLabel || !extraValue) return;
 
+      title.textContent = button.dataset.entryTitle || 'Dettaglio';
+      timeLabel.textContent = button.dataset.entryTitle === 'Dettaglio evento' ? 'Fascia oraria' : 'Orario';
       time.textContent = button.dataset.entryTime || '-';
-      address.textContent = button.dataset.entryAddress || '-';
+      detailLabel.textContent = button.dataset.entryDetailLabel || 'Dettaglio';
+      detailValue.textContent = button.dataset.entryDetailValue || '-';
+      if (button.dataset.entryExtraLabel) {
+        extraLabel.textContent = button.dataset.entryExtraLabel;
+        extraValue.textContent = button.dataset.entryExtraValue || '-';
+        extraRow.hidden = false;
+      } else {
+        extraRow.hidden = true;
+      }
       modal.classList.add('visible');
       modal.setAttribute('aria-hidden', 'false');
     }
@@ -174,14 +198,18 @@
       entries.forEach(function(entry) {
         const row = document.createElement('button');
         row.type = 'button';
-        row.className = 'calendar-day-modal-entry';
+        row.className = 'calendar-day-modal-entry' + (entry.kind === 'event' ? ' calendar-day-modal-entry-event' : '');
         row.dataset.entryTime = entry.time || '-';
-        row.dataset.entryAddress = entry.address || '-';
+        row.dataset.entryTitle = entry.modal_title || 'Dettaglio';
+        row.dataset.entryDetailLabel = entry.detail_label || 'Dettaglio';
+        row.dataset.entryDetailValue = entry.detail_value || '-';
+        row.dataset.entryExtraLabel = entry.extra_label || '';
+        row.dataset.entryExtraValue = entry.extra_value || '';
         row.onclick = function() {
           closeCalendarDayEntries();
           openCalendarInfo(row);
         };
-        row.innerHTML = '<strong>' + (entry.time || '-') + '</strong><span>' + (entry.address || '-') + '</span>';
+        row.innerHTML = '<strong>' + (entry.time || '-') + '</strong><span>' + (entry.detail_value || '-') + '</span>';
         entriesWrap.appendChild(row);
       });
 

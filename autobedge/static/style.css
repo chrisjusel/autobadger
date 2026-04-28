@@ -1024,6 +1024,16 @@ a.pill:active {
   cursor: pointer;
 }
 
+.calendar-entry-event {
+  border-color: rgba(255, 107, 107, .38);
+  background: rgba(255, 107, 107, .12);
+  color: #ffd6d6;
+}
+
+.calendar-entry-event .calendar-entry-info-icon {
+  color: #ffb3b3;
+}
+
 .calendar-entry-top {
   display: flex;
   align-items: center;
@@ -1172,6 +1182,11 @@ a.pill:active {
   background: rgba(255, 255, 255, .04);
   color: var(--text);
   text-align: left;
+}
+
+.calendar-day-modal-entry-event {
+  border-color: rgba(255, 107, 107, .32);
+  background: rgba(255, 107, 107, .10);
 }
 
 .calendar-day-modal-entry span {

@@ -95,3 +95,15 @@ class CoremPresenceEntry:
     badge_type: str = ""
     user_id: int = 0
     zone_id: str = ""
+
+
+@dataclass
+class CoremEventEntry:
+    id: int = 0
+    name: str = ""
+    localization_name: str = ""
+    status: str = ""
+    event_type: str = ""
+    is_absence: bool = False
+    start_at: str = ""
+    end_at: str = ""

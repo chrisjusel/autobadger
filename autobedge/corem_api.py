@@ -9,7 +9,7 @@ from typing import Any
 
 import requests
 
-from .models import CoremPresenceEntry, DailyAttendancePolicy, UserProfile
+from .models import CoremEventEntry, CoremPresenceEntry, DailyAttendancePolicy, UserProfile
 from .user_manager import UserManager
 
 LOG = logging.getLogger(__name__)
@@ -19,13 +19,13 @@ class CoremApiManager:
     BASE_URL = "https://gestionedipendenti.corem.cloud/api"
     RETRY_DELAYS = (5, 15, 45)
     MOCK_HOLIDAYS = {
-        1: ("01-01", "06-01"),
-        4: ("06-04", "25-04"),
-        5: ("01-05",),
-        6: ("02-06",),
-        8: ("15-08",),
-        11: ("01-11",),
-        12: ("08-12", "25-12", "26-12"),
+        1: (("01", "Capodanno"), ("06", "Epifania")),
+        4: (("06", "Lunedi dell'Angelo"), ("25", "Liberazione")),
+        5: (("01", "Festa del Lavoro"),),
+        6: (("02", "Festa della Repubblica"),),
+        8: (("15", "Ferragosto"),),
+        11: (("01", "Ognissanti"),),
+        12: (("08", "Immacolata"), ("25", "Natale"), ("26", "Santo Stefano")),
     }
 
     def __init__(self, user_manager: UserManager, timeout: float = 20.0) -> None:
@@ -61,6 +61,12 @@ class CoremApiManager:
         return bool(user.jwt_token), "" if user.jwt_token else "Token Corem assente"
 
     def fetch_holidays(self, user: UserProfile) -> tuple[bool, list[str], str]:
+        ok, holidays, error = self.fetch_holiday_details(user)
+        if not ok:
+            return False, [], error
+        return True, sorted({item["date"] for item in holidays if item.get("date")}), ""
+
+    def fetch_holiday_details(self, user: UserProfile) -> tuple[bool, list[dict[str, str]], str]:
         if os.environ.get("AUTOBEDGE_MOCK_PRESENCES", "").strip() == "1":
             return True, self._mock_holidays(), ""
         response, error = self._execute_authorized_request(user, "GET", "/sedi/100/festivita", None, "SYS", "recupero festivita'")
@@ -76,7 +82,19 @@ class CoremApiManager:
             message = "JSON festivita' non valido"
             self._log_failure(user, "SYS", message)
             return False, [], message
-        holidays = sorted({str(item.get("date")) for item in data if isinstance(item, dict) and item.get("date")})
+        holidays: list[dict[str, str]] = []
+        for item in data:
+            if not isinstance(item, dict):
+                continue
+            date_value = str(item.get("date") or "").strip()
+            if not date_value:
+                continue
+            holidays.append(
+                {
+                    "date": date_value,
+                    "name": str(item.get("nome") or item.get("name") or "Festivita").strip() or "Festivita",
+                }
+            )
         return True, holidays, ""
 
     def fetch_daily_policy(self, user: UserProfile, date: str) -> tuple[bool, DailyAttendancePolicy, str]:
@@ -107,6 +125,49 @@ class CoremApiManager:
             if isinstance(item, dict):
                 self._apply_event_to_policy(policy, item, date)
         return True, policy, ""
+
+    def fetch_event_details(self, user: UserProfile, start_date: str, end_date: str) -> tuple[bool, list[CoremEventEntry], str]:
+        if os.environ.get("AUTOBEDGE_MOCK_PRESENCES", "").strip() == "1":
+            return True, self._mock_events(start_date, end_date), ""
+        if user.corem_user_id <= 0:
+            message = "utenteId Corem non configurato"
+            self._log_failure(user, "SYS", message)
+            return False, [], message
+        path = f"/eventi?data_inizio={start_date}&data_fine={end_date}&utente_id={user.corem_user_id}"
+        response, error = self._execute_authorized_request(user, "GET", path, None, "SYS", "recupero eventi calendario")
+        if response is None:
+            return False, [], error
+        try:
+            data = response.json()
+        except ValueError:
+            message = "JSON eventi non valido"
+            self._log_failure(user, "SYS", message)
+            return False, [], message
+        if not isinstance(data, list):
+            message = "JSON eventi non valido"
+            self._log_failure(user, "SYS", message)
+            return False, [], message
+        events: list[CoremEventEntry] = []
+        for item in data:
+            if not isinstance(item, dict):
+                continue
+            start_at = str(item.get("dataInizio") or "").strip()
+            end_at = str(item.get("dataFine") or "").strip()
+            if not start_at and not end_at:
+                continue
+            events.append(
+                CoremEventEntry(
+                    id=int(item.get("id", 0) or 0),
+                    name=self._localized_event_name(item),
+                    localization_name=self._localization_names(item),
+                    status=str(item.get("stato") or "").strip(),
+                    event_type=str(item.get("tipoEvento") or "").strip(),
+                    is_absence=bool(item.get("assenza", False)),
+                    start_at=start_at,
+                    end_at=end_at,
+                )
+            )
+        return True, events, ""
 
     def fetch_presences(self, user: UserProfile, start_date: str, end_date: str) -> tuple[bool, list[CoremPresenceEntry], str]:
         if os.environ.get("AUTOBEDGE_MOCK_PRESENCES", "").strip() == "1":
@@ -214,15 +275,61 @@ class CoremApiManager:
             current += timedelta(days=1)
         return presences
 
-    def _mock_holidays(self) -> list[str]:
+    def _mock_holidays(self) -> list[dict[str, str]]:
         current_year = datetime.now().year
         years = range(current_year - 1, current_year + 3)
-        holidays: list[str] = []
+        holidays: list[dict[str, str]] = []
         for year in years:
             for month, day_values in self.MOCK_HOLIDAYS.items():
-                for day_value in day_values:
-                    holidays.append(f"{year:04d}-{month:02d}-{int(day_value.split('-', 1)[0]):02d}")
-        return sorted(holidays)
+                for day_number, name in day_values:
+                    holidays.append({"date": f"{year:04d}-{month:02d}-{int(day_number):02d}", "name": name})
+        holidays.sort(key=lambda item: item["date"])
+        return holidays
+
+    def _mock_events(self, start_date: str, end_date: str) -> list[CoremEventEntry]:
+        start = datetime.strptime(start_date, "%Y-%m-%d")
+        end = datetime.strptime(end_date, "%Y-%m-%d")
+        events: list[CoremEventEntry] = []
+        current = start
+        event_id = 3000000
+        weekday_index = 0
+        while current <= end:
+            if current.weekday() < 5 and weekday_index % 3 == 0:
+                start_at = current.replace(hour=11, minute=0, second=0)
+                end_at = current.replace(hour=12, minute=0, second=0)
+                events.append(
+                    CoremEventEntry(
+                        id=event_id,
+                        name="Permesso orario",
+                        localization_name="Permesso orario",
+                        status="APPROVATO",
+                        event_type="ORARIO",
+                        is_absence=True,
+                        start_at=start_at.strftime("%Y-%m-%dT%H:%M:%S"),
+                        end_at=end_at.strftime("%Y-%m-%dT%H:%M:%S"),
+                    )
+                )
+                event_id += 1
+            if current.weekday() < 5 and weekday_index % 7 == 4:
+                start_at = current.replace(hour=15, minute=30, second=0)
+                end_at = current.replace(hour=16, minute=30, second=0)
+                events.append(
+                    CoremEventEntry(
+                        id=event_id,
+                        name="Visita medica",
+                        localization_name="Visita medica",
+                        status="INSERITO",
+                        event_type="ORARIO",
+                        is_absence=True,
+                        start_at=start_at.strftime("%Y-%m-%dT%H:%M:%S"),
+                        end_at=end_at.strftime("%Y-%m-%dT%H:%M:%S"),
+                    )
+                )
+                event_id += 1
+            if current.weekday() < 5:
+                weekday_index += 1
+            current += timedelta(days=1)
+        return events
 
     def submit_badge(self, user: UserProfile, in_office: bool, type_: str) -> tuple[bool, str]:
         payload = {
@@ -346,6 +453,17 @@ class CoremApiManager:
                 return loc_name
             fallback = fallback or loc_name
         return fallback
+
+    @staticmethod
+    def _localization_names(item: dict[str, Any]) -> str:
+        names: list[str] = []
+        for localization in item.get("localizzazioni", []):
+            if not isinstance(localization, dict):
+                continue
+            loc_name = str(localization.get("nome") or "").strip()
+            if loc_name and loc_name not in names:
+                names.append(loc_name)
+        return " | ".join(names)
 
     @staticmethod
     def _time_from_datetime(value: str) -> int:

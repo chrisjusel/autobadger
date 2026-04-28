@@ -9,7 +9,7 @@ from urllib.parse import urlencode
 from flask import Flask, Response, redirect, render_template, request, session, url_for
 
 from .corem_api import CoremApiManager
-from .models import CoremPresenceEntry, DailyScheduleSnapshot, NtfySettings, SchedulerSettings, UserProfile
+from .models import CoremEventEntry, CoremPresenceEntry, DailyScheduleSnapshot, NtfySettings, SchedulerSettings, UserProfile
 from .notification_manager import NotificationManager
 from .scheduler import SchedulerManager
 from .time_manager import NTPManager
@@ -378,7 +378,8 @@ class WebServerManager:
                 selected_user = user
 
         presences: list[CoremPresenceEntry] = []
-        holidays: list[str] = []
+        events: list[CoremEventEntry] = []
+        holidays: list[dict[str, str]] = []
         if selected_user.corem_user_id <= 0:
             page_message = page_message or "Configura prima l'utente Corem nelle impostazioni."
         else:
@@ -386,11 +387,14 @@ class WebServerManager:
             ok, presences, error = self.corem_api.fetch_presences(selected_user, start_date, end_date)
             if not ok:
                 page_message = page_message or error
-            holidays_ok, holidays, holidays_error = self.corem_api.fetch_holidays(selected_user)
+            events_ok, events, events_error = self.corem_api.fetch_event_details(selected_user, start_date, end_date)
+            if not events_ok:
+                page_message = page_message or events_error
+            holidays_ok, holidays, holidays_error = self.corem_api.fetch_holiday_details(selected_user)
             if not holidays_ok:
                 page_message = page_message or holidays_error
 
-        month_label, weeks, summary = self._build_presence_calendar(selected_month, presences, holidays)
+        month_label, weeks, summary = self._build_presence_calendar(selected_month, presences, events, holidays)
         return self._render(
             "calendar.html",
             "Calendario",
@@ -489,12 +493,12 @@ class WebServerManager:
             return "-"
         return datetime.fromtimestamp(epoch, self.ntp_manager.tz).strftime("%d/%m/%Y %H:%M")
 
-    def _build_presence_calendar(self, month_value: str, presences: list[CoremPresenceEntry], holidays: list[str]) -> tuple[str, list[list[dict[str, object]]], dict[str, object]]:
+    def _build_presence_calendar(self, month_value: str, presences: list[CoremPresenceEntry], events: list[CoremEventEntry], holidays: list[dict[str, str]]) -> tuple[str, list[list[dict[str, object]]], dict[str, object]]:
         year = int(month_value[:4])
         month = int(month_value[5:7])
         days_in_month = monthrange(year, month)[1]
         today = self.ntp_manager.get_current_date()
-        holiday_dates = {value for value in holidays if value.startswith(f"{month_value}-")}
+        holiday_map = {item.get("date", ""): item.get("name", "Festivita") for item in holidays if str(item.get("date", "")).startswith(f"{month_value}-")}
         entries_by_date: dict[str, list[dict[str, str]]] = {}
         badge_type_counts: dict[str, int] = {}
         first_badge = ""
@@ -506,21 +510,51 @@ class WebServerManager:
             if not date_key:
                 continue
             entry = {
+                "kind": "presence",
                 "time": parsed.strftime("%H:%M") if parsed else presence.timestamp[11:16],
-                "badge_type": presence.badge_type or "SCONOSCIUTO",
-                "site_name": presence.site_name or "-",
+                "sort_key": parsed.strftime("%H:%M:%S") if parsed else f"{presence.timestamp[11:19]}",
+                "range_start": parsed.strftime("%H:%M") if parsed else presence.timestamp[11:16],
+                "range_end": parsed.strftime("%H:%M") if parsed else presence.timestamp[11:16],
                 "address": presence.address,
+                "modal_title": "Dettaglio presenza",
+                "detail_label": "Indirizzo",
+                "detail_value": presence.address or "-",
+                "extra_label": "",
+                "extra_value": "",
             }
             entries_by_date.setdefault(date_key, []).append(entry)
-            badge_type_counts[entry["badge_type"]] = badge_type_counts.get(entry["badge_type"], 0) + 1
+            badge_type_counts[presence.badge_type or "SCONOSCIUTO"] = badge_type_counts.get(presence.badge_type or "SCONOSCIUTO", 0) + 1
             badge_timestamp = parsed.strftime("%d/%m %H:%M") if parsed else presence.timestamp[:16].replace("T", " ")
             if not first_badge or badge_timestamp < first_badge:
                 first_badge = badge_timestamp
             if not last_badge or badge_timestamp > last_badge:
                 last_badge = badge_timestamp
 
+        for event in events:
+            start = self._parse_corem_timestamp(event.start_at)
+            end = self._parse_corem_timestamp(event.end_at)
+            date_key = start.strftime("%Y-%m-%d") if start else event.start_at[:10]
+            if not date_key:
+                continue
+            start_time = start.strftime("%H:%M") if start else event.start_at[11:16]
+            end_time = end.strftime("%H:%M") if end else event.end_at[11:16]
+            entry = {
+                "kind": "event",
+                "time": f"{start_time} - {end_time}".strip(" -"),
+                "sort_key": start.strftime("%H:%M:%S") if start else f"{event.start_at[11:19]}",
+                "range_start": start_time,
+                "range_end": end_time,
+                "address": "",
+                "modal_title": "Dettaglio evento",
+                "detail_label": "Localizzazione",
+                "detail_value": event.localization_name or event.name or "-",
+                "extra_label": "Stato",
+                "extra_value": event.status or "-",
+            }
+            entries_by_date.setdefault(date_key, []).append(entry)
+
         for day_entries in entries_by_date.values():
-            day_entries.sort(key=lambda item: item["time"])
+            day_entries.sort(key=lambda item: (item["sort_key"], item["kind"]))
 
         cells: list[dict[str, object]] = []
         first_weekday = datetime.strptime(f"{month_value}-01", "%Y-%m-%d").weekday()
@@ -536,11 +570,12 @@ class WebServerManager:
                     "date": date_value,
                     "day_number": day,
                     "is_today": date_value == today,
-                    "is_holiday": date_value in holiday_dates,
+                    "is_holiday": date_value in holiday_map,
+                    "holiday_name": holiday_map.get(date_value, ""),
                     "is_weekend": datetime.strptime(date_value, "%Y-%m-%d").weekday() >= 5,
                     "entry_count": len(day_entries),
-                    "first_time": day_entries[0]["time"] if day_entries else "",
-                    "last_time": day_entries[-1]["time"] if day_entries else "",
+                    "first_time": day_entries[0]["range_start"] if day_entries else "",
+                    "last_time": day_entries[-1]["range_end"] if day_entries else "",
                     "entries": day_entries,
                 }
             )
