@@ -21,10 +21,6 @@
     {% if schedules %}
       {% set entry = schedules[0] %}
       <div class="chips" style="margin-bottom: 14px;">
-        <span class="chip {{ 'chip-user' if entry.in_office else 'chip-mode-remote' }}">
-          <i data-lucide="{{ 'building-2' if entry.in_office else 'house' }}" style="width:13px;height:13px;"></i>
-          {{ "In sede" if entry.in_office else "Telelavoro" }}
-        </span>
         {% if entry.skip_badge_in %}
           <span class="chip chip-skipped"><i data-lucide="x-circle" style="width:13px;height:13px;"></i>Badge IN Saltato</span>
         {% elif entry.badge_in_executed %}
