@@ -7,7 +7,7 @@
         <h2>Pianificazioni presenti</h2>
         <p class="muted">Ultima pianificazione: {{ fmt_datetime(last_planned_at) }}</p>
       </div>
-      <div class="actions planning-actions">
+      <div class="actions planning-actions{% if user.is_admin %} planning-actions-admin{% endif %}">
         <form method="post" action="{{ url_for('dashboard_replan') }}">
           <button class="alt">Aggiorna pianificazione</button>
         </form>
@@ -21,16 +21,23 @@
     {% if schedules %}
       {% set entry = schedules[0] %}
       <div class="chips" style="margin-bottom: 14px;">
-        <span class="chip {{ 'chip-user' if entry.in_office else 'chip-mode-remote' }}">{{ "In sede" if entry.in_office else "Telelavoro" }}</span>
-        {% if entry.badge_in_executed %}
-          <span class="chip chip-user">Badge IN ✓</span>
-        {% elif entry.badge_in_at %}
-          <span class="chip chip-pending">Badge IN ⏳</span>
+        <span class="chip {{ 'chip-user' if entry.in_office else 'chip-mode-remote' }}">
+          <i data-lucide="{{ 'building-2' if entry.in_office else 'house' }}" style="width:13px;height:13px;"></i>
+          {{ "In sede" if entry.in_office else "Telelavoro" }}
+        </span>
+        {% if entry.skip_badge_in %}
+          <span class="chip chip-skipped"><i data-lucide="x-circle" style="width:13px;height:13px;"></i>Badge IN Saltato</span>
+        {% elif entry.badge_in_executed %}
+          <span class="chip chip-user"><i data-lucide="check-circle" style="width:13px;height:13px;"></i>Badge IN Eseguito</span>
+        {% else %}
+          <span class="chip chip-pending"><i data-lucide="clock" style="width:13px;height:13px;"></i>Badge IN Attesa</span>
         {% endif %}
-        {% if entry.badge_out_executed %}
-          <span class="chip chip-user">Badge OUT ✓</span>
-        {% elif entry.badge_out_at %}
-          <span class="chip chip-pending">Badge OUT ⏳</span>
+        {% if entry.skip_badge_out %}
+          <span class="chip chip-skipped"><i data-lucide="x-circle" style="width:13px;height:13px;"></i>Badge OUT Saltato</span>
+        {% elif entry.badge_out_executed %}
+          <span class="chip chip-user"><i data-lucide="check-circle" style="width:13px;height:13px;"></i>Badge OUT Eseguito</span>
+        {% else %}
+          <span class="chip chip-pending"><i data-lucide="clock" style="width:13px;height:13px;"></i>Badge OUT Attesa</span>
         {% endif %}
       </div>
     {% endif %}
@@ -38,7 +45,7 @@
       <thead>
         <tr>
           <th>Data</th>
-          <th>Utente</th>
+          {% if user.is_admin %}<th>Utente</th>{% endif %}
           <th>Elaborata</th>
           <th>Modalita</th>
           <th>Badge IN</th>
@@ -50,39 +57,41 @@
       <tbody>
         {% for entry in schedules %}
           <tr class="schedule-row">
-            <td data-label="Data">{{ fmt_date(entry.date) }}</td>
-            <td data-label="Utente">{{ entry.username }}</td>
+            <td data-label="DATA">{{ fmt_date(entry.date) }}</td>
+            {% if user.is_admin %}<td class="detail-row" data-label="UTENTE">{{ entry.username }}</td>{% endif %}
             <td class="detail-row" data-label="ELABORATA">{{ fmt_datetime(entry.planned_at) }}</td>
-            <td data-label="Modalita">{{ "In sede" if entry.in_office else "Telelavoro" }}</td>
+            <td data-label="MODALITA">{{ "In sede" if entry.in_office else "Telelavoro" }}</td>
             <td data-label="Badge IN">{{ schedule_cell(entry.badge_in_at, entry.skip_badge_in, entry.badge_in_executed) }}</td>
             <td data-label="Badge OUT">{{ schedule_cell(entry.badge_out_at, entry.skip_badge_out, entry.badge_out_executed) }}</td>
             <td class="detail-row" data-label="NOTE">{{ entry.note or "-" }}</td>
-            <td class="detail-toggle-row" colspan="8">
+            <td class="detail-toggle-row" colspan="{{ 8 if user.is_admin else 7 }}">
               <button type="button" class="detail-toggle-btn" onclick="toggleDetails(this)">
-                Mostra dettagli ▾
+                Mostra dettagli <i data-lucide="chevron-down" style="width:13px;height:13px;"></i>
               </button>
             </td>
             <td data-label="AZIONI">
               <form class="inlineform" method="post" action="{{ url_for('dashboard_scheduler_delete') }}">
                 <input type="hidden" name="date" value="{{ entry.date }}">
                 <input type="hidden" name="user_id" value="{{ entry.user_id }}">
-                <button class="danger iconbtn" title="Cancella" data-confirm="Sei sicuro di voler cancellare questa pianificazione?">X</button>
+                <button type="submit" class="btn-ghost-delete" aria-label="Elimina pianificazione" title="Elimina pianificazione" data-confirm="Sei sicuro di voler cancellare questa pianificazione?">
+                  <i data-lucide="trash-2"></i>
+                </button>
               </form>
             </td>
           </tr>
         {% else %}
-          <tr class="empty-row"><td colspan="8">Nessuna pianificazione disponibile.</td></tr>
+          <tr class="empty-row"><td colspan="{{ 8 if user.is_admin else 7 }}">Nessuna pianificazione disponibile.</td></tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
   <div class="card table mobile-card-table">
-    <h2>Ultimi 30 eventi</h2>
+    <h2>Log attività</h2>
     <table>
       <thead>
         <tr>
           <th>Data/Ora</th>
-          <th>Utente</th>
+          {% if user.is_admin %}<th>Utente</th>{% endif %}
           <th>Tipo</th>
           <th>Esito</th>
           <th>Note</th>
@@ -92,19 +101,19 @@
         {% for row in logs %}
           <tr data-event-index="{{ loop.index0 }}">
             <td data-label="Data/Ora">{{ fmt_datetime(row.entry.timestamp) }}</td>
-            <td data-label="Utente">{{ row.username }}</td>
+            {% if user.is_admin %}<td data-label="Utente">{{ row.username }}</td>{% endif %}
             <td data-label="Tipo">{{ row.entry.type }}</td>
             <td data-label="Esito">{{ "OK" if row.entry.success else "KO" }}</td>
             <td data-label="Note">{{ row.entry.note }}</td>
           </tr>
         {% else %}
-          <tr class="empty-row"><td colspan="5">Nessun evento disponibile.</td></tr>
+          <tr class="empty-row"><td colspan="{{ 5 if user.is_admin else 4 }}">Nessun evento disponibile.</td></tr>
         {% endfor %}
       </tbody>
     </table>
     <div class="events-load-more-wrap" id="eventsLoadMoreWrap" style="display:none; text-align:center; margin-top:14px;">
       <button type="button" class="btn-ghost-load-more" id="eventsLoadMoreBtn" onclick="loadMoreEvents()">
-        Carica altri ▾
+        Carica altri <i data-lucide="chevron-down" style="width:14px;height:14px;"></i>
       </button>
     </div>
   </div>
@@ -114,7 +123,12 @@
       const detailRows = row.querySelectorAll('.detail-row');
       const isOpen = detailRows.length > 0 && detailRows[0].classList.contains('visible');
       detailRows.forEach((detailRow) => detailRow.classList.toggle('visible', !isOpen));
-      btn.textContent = isOpen ? 'Mostra dettagli ▾' : 'Nascondi ▴';
+      btn.innerHTML = isOpen
+        ? 'Mostra dettagli <i data-lucide="chevron-down" style="width:13px;height:13px;"></i>'
+        : 'Nascondi <i data-lucide="chevron-up" style="width:13px;height:13px;"></i>';
+      if (window.lucide) {
+        window.lucide.createIcons();
+      }
     }
 
     (function() {

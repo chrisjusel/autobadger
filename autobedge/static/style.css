@@ -208,6 +208,7 @@ p {
 .chip {
   display: inline-flex;
   align-items: center;
+  gap: 5px;
   border-radius: 999px;
   padding: 6px 10px;
   font-size: .82rem;
@@ -237,6 +238,12 @@ p {
   background: rgba(255, 200, 80, .18);
   color: #ffe9a0;
   border-color: rgba(255, 200, 80, .4);
+}
+
+.chip-skipped {
+  background: rgba(169, 190, 213, 0.10);
+  color: rgba(169, 190, 213, 0.75);
+  border-color: rgba(169, 190, 213, 0.22);
 }
 
 .links {
@@ -385,10 +392,44 @@ button {
   border-color: rgba(255, 255, 255, 0.22);
 }
 
+.btn-ghost-delete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  min-height: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 107, 107, 0.30);
+  background: rgba(255, 107, 107, 0.07);
+  color: rgba(255, 107, 107, 0.70);
+  cursor: pointer;
+  transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.08s ease;
+}
+
+.btn-ghost-delete:hover {
+  background: rgba(255, 107, 107, 0.14);
+  border-color: rgba(255, 107, 107, 0.55);
+  color: #ff8989;
+}
+
+.btn-ghost-delete:active {
+  transform: scale(0.92);
+  opacity: 0.80;
+}
+
+.btn-ghost-delete svg,
+.btn-ghost-delete i {
+  width: 15px;
+  height: 15px;
+}
+
 .btn-ghost-load-more {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 6px;
   border-radius: 14px;
   border: 1px solid var(--line);
   padding: 11px 24px;
@@ -431,7 +472,8 @@ button {
   line-height: 1;
 }
 
-.bottom-nav-icon svg {
+.bottom-nav-icon svg,
+.bottom-nav-icon i {
   width: 20px;
   height: 20px;
   fill: none;
@@ -592,6 +634,31 @@ th {
 
 .table {
   overflow: auto;
+}
+
+.table-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.table-action-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 7px 11px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, .05);
+  color: var(--text);
+  font-weight: 800;
+}
+
+.table-action-link.danger-link {
+  border-color: rgba(255, 107, 107, 0.35);
+  background: rgba(255, 107, 107, 0.08);
+  color: #ff8989;
 }
 
 .actions {
@@ -861,7 +928,7 @@ a.pill:active {
 
   .links .pill,
   .btn,
-  button,
+  button:not(.btn-ghost-delete):not(.detail-toggle-btn):not(.input-eye-btn),
   .btn-ghost-danger {
     width: 100%;
   }
@@ -927,12 +994,13 @@ a.pill:active {
   .schedule-table td,
   .mobile-card-table td {
     display: grid;
-    grid-template-columns: minmax(92px, 38%) minmax(0, 1fr);
+    grid-template-columns: minmax(80px, 32%) minmax(0, 1fr);
     gap: 10px;
     align-items: start;
     padding: 8px 0;
     border-bottom: 1px solid var(--line);
     overflow-wrap: anywhere;
+    font-size: 0.88rem;
     font-weight: 600;
   }
 
@@ -959,9 +1027,7 @@ a.pill:active {
   .mobile-card-table td[data-label="ELABORATA"],
   .schedule-table td[data-label="Elaborata"],
   .mobile-card-table td[data-label="Elaborata"] {
-    background: rgba(78, 204, 163, 0.10);
-    border-radius: 10px;
-    padding: 8px;
+    /* nessuno stile speciale */
   }
 
   .schedule-table .inlineform,
@@ -1026,6 +1092,9 @@ a.pill:active {
   }
 
   .detail-toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
     width: auto;
     min-height: unset;
     padding: 4px 0;
@@ -1051,6 +1120,10 @@ a.pill:active {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     margin-bottom: 14px;
+  }
+
+  .planning-actions.planning-actions-admin {
+    grid-template-columns: 1fr;
   }
 
   .planning-actions form {
@@ -1080,5 +1153,13 @@ a.pill:active {
   .schedule-table tr.empty-row td::before,
   .mobile-card-table tr.empty-row td::before {
     content: none;
+  }
+
+  .admin-users-table .table-actions {
+    justify-content: flex-start;
+  }
+
+  .admin-users-table .table-action-link {
+    min-height: 44px;
   }
 }

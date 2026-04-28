@@ -11,6 +11,7 @@
   <link rel="apple-touch-icon" sizes="192x192" href="{{ url_for('static', filename='img/icon-192.png') }}">
   <link rel="manifest" href="{{ url_for('static', filename='manifest.webmanifest') }}">
   <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js" defer></script>
   <meta name="theme-color" content="#07131f">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -23,10 +24,7 @@
   <div class="app-shell">
     {% if user %}
       <div class="pull-refresh" aria-hidden="true">
-        <svg class="pull-refresh-icon" viewBox="0 0 24 24">
-          <path d="M20 12a8 8 0 1 1-2.34-5.66"/>
-          <path d="M20 4v6h-6"/>
-        </svg>
+        <i class="pull-refresh-icon" data-lucide="refresh-cw"></i>
       </div>
     {% endif %}
     {% if dry_run %}
@@ -73,50 +71,19 @@
           <a class="bottom-nav-item{% if "Logout" in link.label %} bottom-nav-logout{% endif %}{% if request.path == link.href or link.active %} active{% endif %}" href="{{ link.href }}"{% if "Logout" in link.label %} data-confirm="Sei sicuro di voler effettuare il logout?"{% endif %}>
             <span class="bottom-nav-icon" aria-hidden="true">
               {% if "Dashboard" in link.label %}
-                <svg viewBox="0 0 24 24">
-                  <path d="m3 9 9-7 9 7"/>
-                  <path d="M9 22V12h6v10"/>
-                  <path d="M21 9v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9"/>
-                </svg>
+                <i data-lucide="house"></i>
               {% elif "Impostazioni" in link.label %}
-                <svg viewBox="0 0 24 24">
-                  <line x1="21" x2="14" y1="4" y2="4"/>
-                  <line x1="10" x2="3" y1="4" y2="4"/>
-                  <line x1="21" x2="12" y1="12" y2="12"/>
-                  <line x1="8" x2="3" y1="12" y2="12"/>
-                  <line x1="21" x2="16" y1="20" y2="20"/>
-                  <line x1="12" x2="3" y1="20" y2="20"/>
-                  <line x1="14" x2="14" y1="2" y2="6"/>
-                  <line x1="8" x2="8" y1="10" y2="14"/>
-                  <line x1="16" x2="16" y1="18" y2="22"/>
-                </svg>
+                <i data-lucide="sliders-horizontal"></i>
               {% elif "Pausa" in link.label or "Pause" in link.label %}
-                <svg viewBox="0 0 24 24">
-                  <circle cx="12" cy="12" r="10"/>
-                  <path d="M10 15V9"/>
-                  <path d="M14 15V9"/>
-                </svg>
+                <i data-lucide="circle-pause"></i>
               {% elif "Utenti" in link.label or "Admin" in link.label %}
-                <svg viewBox="0 0 24 24">
-                  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
-                  <circle cx="9" cy="7" r="4"/>
-                  <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
-                  <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-                </svg>
+                <i data-lucide="users"></i>
               {% elif "Diagnostica" in link.label %}
-                <svg viewBox="0 0 24 24">
-                  <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
-                </svg>
+                <i data-lucide="activity"></i>
               {% elif "Logout" in link.label %}
-                <svg viewBox="0 0 24 24">
-                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-                  <path d="M16 17l5-5-5-5"/>
-                  <path d="M21 12H9"/>
-                </svg>
+                <i data-lucide="log-out"></i>
               {% else %}
-                <svg viewBox="0 0 24 24">
-                  <circle cx="12" cy="12" r="10"/>
-                </svg>
+                <i data-lucide="circle"></i>
               {% endif %}
             </span>
             <span class="bottom-nav-label">{{ link.label }}</span>
@@ -138,6 +105,12 @@
   </div>
   <script>
     (function() {
+      document.addEventListener('DOMContentLoaded', function() {
+        if (window.lucide) {
+          window.lucide.createIcons();
+        }
+      });
+
       const modal = document.getElementById('confirmModal');
       const message = document.getElementById('confirmMessage');
       const accept = document.getElementById('confirmAccept');

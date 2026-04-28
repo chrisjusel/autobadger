@@ -28,24 +28,25 @@
       <div class="actions"><button>Salva scheduler</button></div>
     </form>
   </div>
-  <div class="card table">
+  <div class="card table mobile-card-table admin-users-table">
     <h2>Utenti</h2>
     <div class="actions"><a class="btn" href="{{ url_for('admin_user') }}">Nuovo utente</a></div>
     <table>
       <thead>
-        <tr><th>ID</th><th>Username</th><th>Ruolo</th><th>Azioni</th></tr>
+        <tr><th>Username</th><th>Ruolo</th><th>Azioni</th></tr>
       </thead>
       <tbody>
         {% for candidate in users %}
           <tr>
-            <td>{{ candidate.id }}</td>
-            <td>{{ candidate.username }}</td>
-            <td>{{ "Admin" if candidate.is_admin else "User" }}</td>
-            <td>
-              <a href="{{ url_for('admin_user', id=candidate.id) }}">Modifica</a>
+            <td data-label="Username">{{ candidate.username }}</td>
+            <td data-label="Ruolo">{{ "Admin" if candidate.is_admin else "User" }}</td>
+            <td data-label="Azioni utente">
+              <div class="table-actions">
+                <a class="table-action-link" href="{{ url_for('admin_user', id=candidate.id) }}">Modifica</a>
               {% if not candidate.is_admin %}
-                | <a href="{{ url_for('admin_delete', id=candidate.id) }}" data-confirm="Sei sicuro di voler eliminare l'utente {{ candidate.username }}?">Elimina</a>
+                  <a class="table-action-link danger-link" href="{{ url_for('admin_delete', id=candidate.id) }}" data-confirm="Sei sicuro di voler eliminare l'utente {{ candidate.username }}?">Elimina</a>
               {% endif %}
+              </div>
             </td>
           </tr>
         {% endfor %}
