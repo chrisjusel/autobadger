@@ -557,7 +557,7 @@ class WebServerManager:
                 "is_confirmed": (event.status or "").strip().lower() == "confermato",
                 "address": "",
                 "modal_title": "Dettaglio evento",
-                "detail_label": "Localizzazione",
+                "detail_label": "Tipo richiesta",
                 "detail_value": event.localization_name or event.name or "-",
                 "extra_label": "Stato",
                 "extra_value": event.status or "-",
