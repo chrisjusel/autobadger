@@ -38,10 +38,10 @@
       {% endif %}
     </div>
     <div class="calendar-mobile-mode" id="calendarMobileMode">
-      <button type="button" class="calendar-mobile-mode-button is-active" data-calendar-mode="detail" aria-pressed="true">Dettaglio</button>
-      <button type="button" class="calendar-mobile-mode-button" data-calendar-mode="compact" aria-pressed="false">Mese</button>
+      <button type="button" class="calendar-mobile-mode-button is-active" data-calendar-mode="compact" aria-pressed="true">Mese</button>
+      <button type="button" class="calendar-mobile-mode-button" data-calendar-mode="detail" aria-pressed="false">Dettaglio</button>
     </div>
-    <div class="calendar-board calendar-board-detailed" data-calendar-board="detail">
+    <div class="calendar-board calendar-board-detailed" data-calendar-board="detail" hidden>
       <div class="calendar-weekdays">
         {% for label in weekday_labels %}
           <div class="calendar-weekday">{{ label }}</div>
@@ -108,6 +108,9 @@
                 <div class="calendar-day-compact-head">
                   <span class="calendar-day-compact-number">{{ day.day_number }}</span>
                 </div>
+                {% if day.is_holiday %}
+                  <div class="calendar-day-compact-holiday" title="{{ day.holiday_name }}">{{ day.holiday_name }}</div>
+                {% endif %}
                 <div class="calendar-day-compact-list">
                   {% for entry in day.entries[:4] %}
                     <div class="calendar-entry-compact{% if entry.kind == 'event' %}{% if entry.is_confirmed %} calendar-entry-compact-event-confirmed{% else %} calendar-entry-compact-event{% endif %}{% elif entry.presence_direction == 'IN' %} calendar-entry-compact-in{% elif entry.presence_direction == 'OUT' %} calendar-entry-compact-out{% endif %}">
@@ -194,19 +197,26 @@
     (function() {
       const modeWrap = document.getElementById('calendarMobileMode');
       if (!modeWrap) return;
+      const storageKey = 'autobedge-calendar-mobile-mode';
 
       const buttons = Array.from(modeWrap.querySelectorAll('[data-calendar-mode]'));
       const boards = Array.from(document.querySelectorAll('[data-calendar-board]'));
 
       function setMode(mode) {
+        const nextMode = mode === 'detail' ? 'detail' : 'compact';
         buttons.forEach(function(button) {
-          const active = button.dataset.calendarMode === mode;
+          const active = button.dataset.calendarMode === nextMode;
           button.classList.toggle('is-active', active);
           button.setAttribute('aria-pressed', active ? 'true' : 'false');
         });
         boards.forEach(function(board) {
-          board.hidden = board.dataset.calendarBoard !== mode;
+          board.hidden = board.dataset.calendarBoard !== nextMode;
         });
+        try {
+          window.localStorage.setItem(storageKey, nextMode);
+        } catch (error) {
+          // ignore storage failures
+        }
       }
 
       buttons.forEach(function(button) {
@@ -215,7 +225,13 @@
         });
       });
 
-      setMode('detail');
+      let initialMode = 'compact';
+      try {
+        initialMode = window.localStorage.getItem(storageKey) || 'compact';
+      } catch (error) {
+        initialMode = 'compact';
+      }
+      setMode(initialMode);
     })();
   </script>
 {% endblock %}

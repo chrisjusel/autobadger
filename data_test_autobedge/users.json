@@ -43,54 +43,6 @@
     "scheduled_pauses": [],
     "badge_log": [
       {
-        "timestamp": "2026-04-28T15:55:09+0000",
-        "type": "SYS",
-        "success": false,
-        "note": "HTTP 401 durante login"
-      },
-      {
-        "timestamp": "2026-04-28T15:55:09+0000",
-        "type": "SYS",
-        "success": false,
-        "note": "HTTP 401 durante login"
-      },
-      {
-        "timestamp": "2026-04-28T15:55:39+0000",
-        "type": "SYS",
-        "success": false,
-        "note": "HTTP 401 durante login"
-      },
-      {
-        "timestamp": "2026-04-28T15:55:39+0000",
-        "type": "SYS",
-        "success": false,
-        "note": "HTTP 401 durante login"
-      },
-      {
-        "timestamp": "2026-04-28T15:55:39+0000",
-        "type": "SYS",
-        "success": false,
-        "note": "HTTP 401 durante login"
-      },
-      {
-        "timestamp": "2026-04-28T15:56:09+0000",
-        "type": "SYS",
-        "success": false,
-        "note": "HTTP 401 durante login"
-      },
-      {
-        "timestamp": "2026-04-28T15:56:09+0000",
-        "type": "SYS",
-        "success": false,
-        "note": "HTTP 401 durante login"
-      },
-      {
-        "timestamp": "2026-04-28T15:56:09+0000",
-        "type": "SYS",
-        "success": false,
-        "note": "HTTP 401 durante login"
-      },
-      {
         "timestamp": "2026-04-28T15:56:39+0000",
         "type": "SYS",
         "success": false,
@@ -638,6 +590,54 @@
       },
       {
         "timestamp": "2026-04-28T16:25:07+0000",
+        "type": "SYS",
+        "success": false,
+        "note": "HTTP 401 durante login"
+      },
+      {
+        "timestamp": "2026-04-28T16:25:37+0000",
+        "type": "SYS",
+        "success": false,
+        "note": "HTTP 401 durante login"
+      },
+      {
+        "timestamp": "2026-04-28T16:26:07+0000",
+        "type": "SYS",
+        "success": false,
+        "note": "HTTP 401 durante login"
+      },
+      {
+        "timestamp": "2026-04-28T16:26:37+0000",
+        "type": "SYS",
+        "success": false,
+        "note": "HTTP 401 durante login"
+      },
+      {
+        "timestamp": "2026-04-28T16:27:07+0000",
+        "type": "SYS",
+        "success": false,
+        "note": "HTTP 401 durante login"
+      },
+      {
+        "timestamp": "2026-04-28T16:27:38+0000",
+        "type": "SYS",
+        "success": false,
+        "note": "HTTP 401 durante login"
+      },
+      {
+        "timestamp": "2026-04-28T16:28:08+0000",
+        "type": "SYS",
+        "success": false,
+        "note": "HTTP 401 durante login"
+      },
+      {
+        "timestamp": "2026-04-28T16:28:38+0000",
+        "type": "SYS",
+        "success": false,
+        "note": "HTTP 401 durante login"
+      },
+      {
+        "timestamp": "2026-04-28T16:29:08+0000",
         "type": "SYS",
         "success": false,
         "note": "HTTP 401 durante login"

@@ -1487,6 +1487,20 @@ a.pill:active {
     line-height: 1;
   }
 
+  .calendar-day-compact-holiday {
+    margin-bottom: 3px;
+    padding: 1px 3px;
+    border-radius: 4px;
+    background: rgba(255, 200, 80, .12);
+    color: #ffe9a0;
+    font-size: .42rem;
+    font-weight: 800;
+    line-height: 1.1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
   .calendar-day-compact-list {
     display: grid;
     gap: 2px;
