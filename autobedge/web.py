@@ -397,6 +397,8 @@ class WebServerManager:
             selected_month=selected_month,
             selected_user=selected_user,
             month_label=month_label,
+            previous_month=self._shift_month(selected_month, -1),
+            next_month=self._shift_month(selected_month, 1),
             weekday_labels=["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"],
             presence_weeks=weeks,
             presence_summary=summary,
@@ -573,3 +575,15 @@ class WebServerManager:
             return datetime.strptime(value[:19], "%Y-%m-%dT%H:%M:%S")
         except ValueError:
             return None
+
+    @staticmethod
+    def _shift_month(month_value: str, delta: int) -> str:
+        year = int(month_value[:4])
+        month = int(month_value[5:7]) + delta
+        while month < 1:
+            month += 12
+            year -= 1
+        while month > 12:
+            month -= 12
+            year += 1
+        return f"{year:04d}-{month:02d}"

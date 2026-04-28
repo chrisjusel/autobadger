@@ -2,14 +2,30 @@
 
 {% block content %}
   <div class="card">
-    <div class="panel-head">
-      <div>
-        <h2>Calendario presenze</h2>
-        <p class="muted">Presenze Corem registrate per il mese selezionato.</p>
+    <div class="panel-head calendar-panel-head">
+      <div class="calendar-month-switcher">
+        <a
+          class="calendar-month-arrow"
+          href="{{ url_for('calendar_page', month=previous_month, user_id=selected_corem_user_id if user.is_admin else None) }}"
+          aria-label="Mese precedente"
+          title="Mese precedente">
+          <i data-lucide="chevron-left"></i>
+        </a>
+        <div>
+          <h2>{{ month_label }}</h2>
+          <p class="muted">{{ selected_user.username }} | {{ presence_summary.total_entries }} badge in {{ presence_summary.days_with_entries }} giorni</p>
+        </div>
+        <a
+          class="calendar-month-arrow"
+          href="{{ url_for('calendar_page', month=next_month, user_id=selected_corem_user_id if user.is_admin else None) }}"
+          aria-label="Mese successivo"
+          title="Mese successivo">
+          <i data-lucide="chevron-right"></i>
+        </a>
       </div>
-      <form class="calendar-toolbar" method="get" action="{{ url_for('calendar_page') }}">
-        <label>Mese<input type="month" name="month" value="{{ selected_month }}"></label>
-        {% if user.is_admin %}
+      {% if user.is_admin %}
+        <form class="calendar-toolbar" method="get" action="{{ url_for('calendar_page') }}">
+          <input type="hidden" name="month" value="{{ selected_month }}">
           <label>Utente
             <select name="user_id">
               {% if not corem_users %}
@@ -20,39 +36,10 @@
               {% endfor %}
             </select>
           </label>
-        {% endif %}
-        <button class="alt">Aggiorna</button>
-      </form>
+          <button class="alt">Aggiorna</button>
+        </form>
+      {% endif %}
     </div>
-    <div class="stats calendar-stats">
-      <div class="stat">
-        <span class="muted">Mese</span>
-        <b>{{ month_label }}</b>
-      </div>
-      <div class="stat">
-        <span class="muted">Utente</span>
-        <b>{{ selected_user.username }}</b>
-      </div>
-      <div class="stat">
-        <span class="muted">Badge rilevati</span>
-        <b>{{ presence_summary.total_entries }}</b>
-      </div>
-      <div class="stat">
-        <span class="muted">Giorni con presenze</span>
-        <b>{{ presence_summary.days_with_entries }}</b>
-      </div>
-    </div>
-    {% if presence_summary.badge_types %}
-      <div class="chips">
-        {% for item in presence_summary.badge_types %}
-          <span class="chip chip-user">{{ item.label }}: {{ item.count }}</span>
-        {% endfor %}
-      </div>
-    {% endif %}
-    <p class="muted calendar-range">Prima timbratura: {{ presence_summary.first_badge }} | Ultima timbratura: {{ presence_summary.last_badge }}</p>
-  </div>
-
-  <div class="card">
     <div class="calendar-board">
       <div class="calendar-weekdays">
         {% for label in weekday_labels %}
@@ -66,9 +53,6 @@
               <section class="calendar-day{% if day.is_today %} is-today{% endif %}{% if day.is_weekend %} is-weekend{% endif %}{% if day.entry_count %} has-entries{% endif %}">
                 <div class="calendar-day-head">
                   <span class="calendar-day-number">{{ day.day_number }}</span>
-                  {% if day.entry_count %}
-                    <span class="calendar-day-count">{{ day.entry_count }}</span>
-                  {% endif %}
                 </div>
                 {% if day.entry_count %}
                   <p class="calendar-day-window">{{ day.first_time }} - {{ day.last_time }}</p>
@@ -77,11 +61,25 @@
                       <article class="calendar-entry">
                         <div class="calendar-entry-top">
                           <strong>{{ entry.time }}</strong>
-                          <span class="calendar-entry-type">{{ entry.badge_type }}</span>
                         </div>
-                        <div class="calendar-entry-site">{{ entry.site_name }}</div>
                         {% if entry.address %}
-                          <div class="calendar-entry-address">{{ entry.address }}</div>
+                          <div class="calendar-entry-address-row">
+                            <div class="calendar-entry-address" title="{{ entry.address }}">{{ entry.address[:28] ~ "..." if entry.address|length > 28 else entry.address }}</div>
+                            {% if entry.address|length > 28 %}
+                              <button
+                                type="button"
+                                class="calendar-entry-toggle"
+                                aria-expanded="false"
+                                aria-label="Mostra indirizzo completo"
+                                title="Mostra indirizzo completo"
+                                onclick="toggleCalendarAddress(this)">
+                                <i data-lucide="chevron-down"></i>
+                              </button>
+                            {% endif %}
+                          </div>
+                          {% if entry.address|length > 28 %}
+                            <div class="calendar-entry-address-full" hidden>{{ entry.address }}</div>
+                          {% endif %}
                         {% endif %}
                       </article>
                     {% endfor %}
@@ -98,4 +96,36 @@
       </div>
     </div>
   </div>
+  <script>
+    function toggleCalendarAddress(button) {
+      const entry = button.closest('.calendar-entry');
+      const details = entry ? entry.querySelector('.calendar-entry-address-full') : null;
+      if (!entry || !details) return;
+
+      const opening = details.hasAttribute('hidden');
+
+      if (window.innerWidth <= 800) {
+        document.querySelectorAll('.calendar-entry-address-full').forEach(function(panel) {
+          if (panel === details) return;
+          panel.setAttribute('hidden', '');
+        });
+        document.querySelectorAll('.calendar-entry-toggle[aria-expanded="true"]').forEach(function(toggle) {
+          if (toggle === button) return;
+          toggle.setAttribute('aria-expanded', 'false');
+        });
+      }
+
+      if (opening) {
+        details.removeAttribute('hidden');
+        button.setAttribute('aria-expanded', 'true');
+      } else {
+        details.setAttribute('hidden', '');
+        button.setAttribute('aria-expanded', 'false');
+      }
+
+      if (window.lucide) {
+        window.lucide.createIcons();
+      }
+    }
+  </script>
 {% endblock %}
