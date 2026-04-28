@@ -62,7 +62,7 @@
                     {% for entry in day.entries %}
                       <button
                         type="button"
-                        class="calendar-entry{% if entry.kind == 'event' %}{% if entry.is_confirmed %} calendar-entry-event{% else %} calendar-entry-event-warning{% endif %}{% endif %}"
+                        class="calendar-entry{% if entry.kind == 'event' %}{% if entry.is_confirmed %} calendar-entry-event-confirmed{% else %} calendar-entry-event{% endif %}{% elif entry.presence_direction == 'IN' %} calendar-entry-presence-in{% elif entry.presence_direction == 'OUT' %} calendar-entry-presence-out{% endif %}"
                         data-entry-time="{{ entry.time }}"
                         data-entry-title="{{ entry.modal_title }}"
                         data-entry-detail-label="{{ entry.detail_label }}"

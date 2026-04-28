@@ -515,6 +515,7 @@ class WebServerManager:
                 "sort_key": parsed.strftime("%H:%M:%S") if parsed else f"{presence.timestamp[11:19]}",
                 "range_start": parsed.strftime("%H:%M") if parsed else presence.timestamp[11:16],
                 "range_end": parsed.strftime("%H:%M") if parsed else presence.timestamp[11:16],
+                "presence_direction": "",
                 "address": presence.address,
                 "modal_title": "Dettaglio presenza",
                 "detail_label": "Indirizzo",
@@ -529,6 +530,12 @@ class WebServerManager:
                 first_badge = badge_timestamp
             if not last_badge or badge_timestamp > last_badge:
                 last_badge = badge_timestamp
+
+        for day_entries in entries_by_date.values():
+            presence_entries = [item for item in day_entries if item["kind"] == "presence"]
+            presence_entries.sort(key=lambda item: item["sort_key"])
+            for index, item in enumerate(presence_entries):
+                item["presence_direction"] = "IN" if index % 2 == 0 else "OUT"
 
         for event in events:
             start = self._parse_corem_timestamp(event.start_at)

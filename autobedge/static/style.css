@@ -1058,21 +1058,41 @@ a.pill:active {
   font-size: .72rem;
 }
 
-.calendar-entry-event-warning {
-  border-color: rgba(255, 200, 80, .42);
-  background: rgba(255, 200, 80, .14);
-  color: #ffe7a3;
+.calendar-entry-event-confirmed {
+  border-color: rgba(255, 107, 107, .82);
+  background: rgba(255, 107, 107, .92);
+  color: #fff2f2;
 }
 
-.calendar-entry-event-warning .calendar-entry-info-icon {
-  color: #ffd36a;
+.calendar-entry-event-confirmed .calendar-entry-info-icon {
+  color: #fff2f2;
 }
 
-.calendar-entry-event-warning strong {
+.calendar-entry-event-confirmed strong {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   font-size: .72rem;
+}
+
+.calendar-entry-presence-in {
+  border-color: rgba(78, 204, 163, .46);
+  background: rgba(78, 204, 163, .16);
+  color: #d9fff1;
+}
+
+.calendar-entry-presence-in .calendar-entry-info-icon {
+  color: #baffea;
+}
+
+.calendar-entry-presence-out {
+  border-color: rgba(255, 200, 80, .42);
+  background: rgba(255, 200, 80, .16);
+  color: #fff0bf;
+}
+
+.calendar-entry-presence-out .calendar-entry-info-icon {
+  color: #ffe9a0;
 }
 
 .calendar-entry-top {
@@ -1358,7 +1378,7 @@ a.pill:active {
   }
 
   .calendar-entry-event strong,
-  .calendar-entry-event-warning strong {
+  .calendar-entry-event-confirmed strong {
     font-size: .62rem;
   }
 
