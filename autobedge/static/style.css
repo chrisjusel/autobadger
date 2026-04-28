@@ -1031,10 +1031,12 @@ a.pill:active {
   color: var(--text);
   text-align: left;
   cursor: pointer;
+  overflow: hidden;
 }
 
 .calendar-entry strong {
   display: block;
+  flex: 1 1 auto;
   min-width: 0;
   line-height: 1.15;
 }
@@ -1051,7 +1053,9 @@ a.pill:active {
 
 .calendar-entry-event strong {
   white-space: nowrap;
-  font-size: .8rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: .72rem;
 }
 
 .calendar-entry-event-warning {
@@ -1066,7 +1070,9 @@ a.pill:active {
 
 .calendar-entry-event-warning strong {
   white-space: nowrap;
-  font-size: .8rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: .72rem;
 }
 
 .calendar-entry-top {
@@ -1074,6 +1080,7 @@ a.pill:active {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  min-width: 0;
 }
 
 .calendar-entry-info-icon {
@@ -1352,7 +1359,7 @@ a.pill:active {
 
   .calendar-entry-event strong,
   .calendar-entry-event-warning strong {
-    font-size: .72rem;
+    font-size: .62rem;
   }
 
   table {
