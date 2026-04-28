@@ -1407,11 +1407,14 @@ a.pill:active {
 
   .calendar-day-head {
     align-items: center;
-    grid-template-columns: 30px minmax(0, 1fr);
+    grid-template-columns: 26px minmax(0, 1fr);
+    gap: 4px;
   }
 
   .calendar-day-window {
-    font-size: .72rem;
+    font-size: .64rem;
+    overflow: visible;
+    text-overflow: clip;
   }
 
   .calendar-entry-event strong,
