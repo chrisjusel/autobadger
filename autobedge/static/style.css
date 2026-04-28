@@ -971,10 +971,11 @@ a.pill:active {
 }
 
 .calendar-day-window {
-  margin-bottom: 10px;
+  margin: 0;
   color: var(--muted);
   font-size: .82rem;
   font-weight: 700;
+  text-align: right;
 }
 
 .calendar-entry-list {
@@ -983,10 +984,16 @@ a.pill:active {
 }
 
 .calendar-entry {
+  display: block;
+  width: 100%;
+  min-height: 0;
   padding: 10px;
   border: 1px solid rgba(255, 255, 255, .08);
   border-radius: 14px;
   background: rgba(4, 15, 24, .34);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
 }
 
 .calendar-entry-top {
@@ -996,16 +1003,20 @@ a.pill:active {
   gap: 8px;
 }
 
-.calendar-entry-info-btn {
-  min-height: 26px;
-  padding: 4px 8px;
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, .12);
-  background: rgba(255, 255, 255, .05);
+.calendar-entry-info-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
   color: var(--muted);
-  font-size: .7rem;
-  font-weight: 800;
-  text-transform: lowercase;
+}
+
+.calendar-entry-info-icon svg,
+.calendar-entry-info-icon i {
+  width: 14px;
+  height: 14px;
+  stroke: currentColor;
 }
 
 .calendar-info-modal {
@@ -1042,19 +1053,21 @@ a.pill:active {
 .calendar-info-head {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 12px;
 }
 
 .calendar-info-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
   width: 36px;
   min-width: 36px;
   min-height: 36px;
   height: 36px;
   padding: 0;
-  border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, .12);
-  background: rgba(255, 255, 255, .05);
+  border-radius: 999px;
+  border: 0;
+  background: transparent;
   color: var(--text);
 }
 
@@ -1245,6 +1258,14 @@ a.pill:active {
 
   .calendar-day {
     min-height: 180px;
+  }
+
+  .calendar-day-head {
+    align-items: center;
+  }
+
+  .calendar-day-window {
+    font-size: .76rem;
   }
 
   table {

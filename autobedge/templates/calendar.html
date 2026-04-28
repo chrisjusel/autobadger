@@ -50,26 +50,26 @@
               <section class="calendar-day{% if day.is_today %} is-today{% endif %}{% if day.is_weekend %} is-weekend{% endif %}{% if day.entry_count %} has-entries{% endif %}">
                 <div class="calendar-day-head">
                   <span class="calendar-day-number">{{ day.day_number }}</span>
+                  {% if day.entry_count %}
+                    <p class="calendar-day-window">{{ day.first_time }} - {{ day.last_time }}</p>
+                  {% endif %}
                 </div>
                 {% if day.entry_count %}
-                  <p class="calendar-day-window">{{ day.first_time }} - {{ day.last_time }}</p>
                   <div class="calendar-entry-list">
                     {% for entry in day.entries %}
-                      <article class="calendar-entry">
+                      <button
+                        type="button"
+                        class="calendar-entry"
+                        data-entry-time="{{ entry.time }}"
+                        data-entry-address="{{ entry.address or '-' }}"
+                        onclick="openCalendarInfo(this)">
                         <div class="calendar-entry-top">
                           <strong>{{ entry.time }}</strong>
-                          {% if entry.address %}
-                            <button
-                              type="button"
-                              class="calendar-entry-info-btn"
-                              data-entry-time="{{ entry.time }}"
-                              data-entry-address="{{ entry.address }}"
-                              onclick="openCalendarInfo(this)">
-                              altre info
-                            </button>
-                          {% endif %}
+                          <span class="calendar-entry-info-icon" aria-hidden="true">
+                            <i data-lucide="info"></i>
+                          </span>
                         </div>
-                      </article>
+                      </button>
                     {% endfor %}
                   </div>
                 {% else %}
@@ -87,11 +87,11 @@
   <div class="calendar-info-modal" id="calendarInfoModal" aria-hidden="true">
     <div class="calendar-info-backdrop" onclick="closeCalendarInfo()"></div>
     <div class="calendar-info-dialog" role="dialog" aria-modal="true" aria-labelledby="calendarInfoTitle">
+      <button type="button" class="calendar-info-close" aria-label="Chiudi" onclick="closeCalendarInfo()">
+        <i data-lucide="x"></i>
+      </button>
       <div class="calendar-info-head">
         <h2 id="calendarInfoTitle">Dettaglio presenza</h2>
-        <button type="button" class="calendar-info-close" aria-label="Chiudi" onclick="closeCalendarInfo()">
-          <i data-lucide="x"></i>
-        </button>
       </div>
       <div class="calendar-info-body">
         <div class="calendar-info-row">
