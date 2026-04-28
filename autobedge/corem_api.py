@@ -18,6 +18,15 @@ LOG = logging.getLogger(__name__)
 class CoremApiManager:
     BASE_URL = "https://gestionedipendenti.corem.cloud/api"
     RETRY_DELAYS = (5, 15, 45)
+    MOCK_HOLIDAYS = {
+        1: ("01-01", "06-01"),
+        4: ("06-04", "25-04"),
+        5: ("01-05",),
+        6: ("02-06",),
+        8: ("15-08",),
+        11: ("01-11",),
+        12: ("08-12", "25-12", "26-12"),
+    }
 
     def __init__(self, user_manager: UserManager, timeout: float = 20.0) -> None:
         self.user_manager = user_manager
@@ -52,6 +61,8 @@ class CoremApiManager:
         return bool(user.jwt_token), "" if user.jwt_token else "Token Corem assente"
 
     def fetch_holidays(self, user: UserProfile) -> tuple[bool, list[str], str]:
+        if os.environ.get("AUTOBEDGE_MOCK_PRESENCES", "").strip() == "1":
+            return True, self._mock_holidays(), ""
         response, error = self._execute_authorized_request(user, "GET", "/sedi/100/festivita", None, "SYS", "recupero festivita'")
         if response is None:
             return False, [], error
@@ -202,6 +213,16 @@ class CoremApiManager:
                 weekday_index += 1
             current += timedelta(days=1)
         return presences
+
+    def _mock_holidays(self) -> list[str]:
+        current_year = datetime.now().year
+        years = range(current_year - 1, current_year + 3)
+        holidays: list[str] = []
+        for year in years:
+            for month, day_values in self.MOCK_HOLIDAYS.items():
+                for day_value in day_values:
+                    holidays.append(f"{year:04d}-{month:02d}-{int(day_value.split('-', 1)[0]):02d}")
+        return sorted(holidays)
 
     def submit_badge(self, user: UserProfile, in_office: bool, type_: str) -> tuple[bool, str]:
         payload = {

@@ -378,15 +378,19 @@ class WebServerManager:
                 selected_user = user
 
         presences: list[CoremPresenceEntry] = []
+        holidays: list[str] = []
         if selected_user.corem_user_id <= 0:
-            page_message = page_message or ("Seleziona un utente Corem." if user.is_admin else "Configura prima l'utente Corem nelle impostazioni.")
+            page_message = page_message or "Configura prima l'utente Corem nelle impostazioni."
         else:
             start_date, end_date = self._month_bounds(selected_month)
             ok, presences, error = self.corem_api.fetch_presences(selected_user, start_date, end_date)
             if not ok:
                 page_message = page_message or error
+            holidays_ok, holidays, holidays_error = self.corem_api.fetch_holidays(selected_user)
+            if not holidays_ok:
+                page_message = page_message or holidays_error
 
-        month_label, weeks, summary = self._build_presence_calendar(selected_month, presences)
+        month_label, weeks, summary = self._build_presence_calendar(selected_month, presences, holidays)
         return self._render(
             "calendar.html",
             "Calendario",
@@ -485,11 +489,12 @@ class WebServerManager:
             return "-"
         return datetime.fromtimestamp(epoch, self.ntp_manager.tz).strftime("%d/%m/%Y %H:%M")
 
-    def _build_presence_calendar(self, month_value: str, presences: list[CoremPresenceEntry]) -> tuple[str, list[list[dict[str, object]]], dict[str, object]]:
+    def _build_presence_calendar(self, month_value: str, presences: list[CoremPresenceEntry], holidays: list[str]) -> tuple[str, list[list[dict[str, object]]], dict[str, object]]:
         year = int(month_value[:4])
         month = int(month_value[5:7])
         days_in_month = monthrange(year, month)[1]
         today = self.ntp_manager.get_current_date()
+        holiday_dates = {value for value in holidays if value.startswith(f"{month_value}-")}
         entries_by_date: dict[str, list[dict[str, str]]] = {}
         badge_type_counts: dict[str, int] = {}
         first_badge = ""
@@ -531,6 +536,7 @@ class WebServerManager:
                     "date": date_value,
                     "day_number": day,
                     "is_today": date_value == today,
+                    "is_holiday": date_value in holiday_dates,
                     "is_weekend": datetime.strptime(date_value, "%Y-%m-%d").weekday() >= 5,
                     "entry_count": len(day_entries),
                     "first_time": day_entries[0]["time"] if day_entries else "",

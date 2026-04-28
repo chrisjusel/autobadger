@@ -47,16 +47,19 @@
         {% for week in presence_weeks %}
           {% for day in week %}
             {% if day.in_month %}
-              <section class="calendar-day{% if day.is_today %} is-today{% endif %}{% if day.is_weekend %} is-weekend{% endif %}{% if day.entry_count %} has-entries{% endif %}">
+              <section class="calendar-day{% if day.is_today %} is-today{% endif %}{% if day.is_weekend %} is-weekend{% endif %}{% if day.is_holiday %} is-holiday{% endif %}{% if day.entry_count %} has-entries{% endif %}">
                 <div class="calendar-day-head">
                   <span class="calendar-day-number">{{ day.day_number }}</span>
                   {% if day.entry_count %}
                     <p class="calendar-day-window">{{ day.first_time }} - {{ day.last_time }}</p>
                   {% endif %}
                 </div>
+                {% if day.is_holiday %}
+                  <div class="calendar-day-holiday">Festivita</div>
+                {% endif %}
                 {% if day.entry_count %}
                   <div class="calendar-entry-list">
-                    {% for entry in day.entries %}
+                    {% for entry in day.entries[:2] %}
                       <button
                         type="button"
                         class="calendar-entry"
@@ -71,6 +74,16 @@
                         </div>
                       </button>
                     {% endfor %}
+                    {% if day.entry_count > 2 %}
+                      <button
+                        type="button"
+                        class="calendar-entry-more"
+                        data-day-label="{{ fmt_date(day.date) }}"
+                        data-day-entries="{{ day.entries|tojson|forceescape }}"
+                        onclick="openCalendarDayEntries(this)">
+                        +{{ day.entry_count - 2 }} altre
+                      </button>
+                    {% endif %}
                   </div>
                 {% else %}
                   <p class="muted calendar-empty">Nessuna presenza</p>
@@ -105,6 +118,24 @@
       </div>
     </div>
   </div>
+  <div class="calendar-day-modal" id="calendarDayModal" aria-hidden="true">
+    <div class="calendar-info-backdrop" onclick="closeCalendarDayEntries()"></div>
+    <div class="calendar-info-dialog" role="dialog" aria-modal="true" aria-labelledby="calendarDayTitle">
+      <div class="calendar-info-head">
+        <h2 id="calendarDayTitle">Presenze del giorno</h2>
+        <button type="button" class="calendar-info-close" aria-label="Chiudi" onclick="closeCalendarDayEntries()">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <div class="calendar-info-body">
+        <div class="calendar-info-row">
+          <span class="muted">Data</span>
+          <strong id="calendarDayDate">-</strong>
+        </div>
+        <div class="calendar-day-modal-list" id="calendarDayEntries"></div>
+      </div>
+    </div>
+  </div>
   <script>
     function openCalendarInfo(button) {
       const modal = document.getElementById('calendarInfoModal');
@@ -125,9 +156,53 @@
       modal.setAttribute('aria-hidden', 'true');
     }
 
+    function openCalendarDayEntries(button) {
+      const modal = document.getElementById('calendarDayModal');
+      const dateLabel = document.getElementById('calendarDayDate');
+      const entriesWrap = document.getElementById('calendarDayEntries');
+      if (!modal || !dateLabel || !entriesWrap) return;
+
+      let entries = [];
+      try {
+        entries = JSON.parse(button.dataset.dayEntries || '[]');
+      } catch (error) {
+        entries = [];
+      }
+
+      dateLabel.textContent = button.dataset.dayLabel || '-';
+      entriesWrap.innerHTML = '';
+      entries.forEach(function(entry) {
+        const row = document.createElement('button');
+        row.type = 'button';
+        row.className = 'calendar-day-modal-entry';
+        row.dataset.entryTime = entry.time || '-';
+        row.dataset.entryAddress = entry.address || '-';
+        row.onclick = function() {
+          closeCalendarDayEntries();
+          openCalendarInfo(row);
+        };
+        row.innerHTML = '<strong>' + (entry.time || '-') + '</strong><span>' + (entry.address || '-') + '</span>';
+        entriesWrap.appendChild(row);
+      });
+
+      modal.classList.add('visible');
+      modal.setAttribute('aria-hidden', 'false');
+      if (window.lucide) {
+        window.lucide.createIcons();
+      }
+    }
+
+    function closeCalendarDayEntries() {
+      const modal = document.getElementById('calendarDayModal');
+      if (!modal) return;
+      modal.classList.remove('visible');
+      modal.setAttribute('aria-hidden', 'true');
+    }
+
     document.addEventListener('keydown', function(event) {
       if (event.key === 'Escape') {
         closeCalendarInfo();
+        closeCalendarDayEntries();
       }
     });
   </script>
