@@ -11,10 +11,7 @@
           title="Mese precedente">
           <i data-lucide="chevron-left"></i>
         </a>
-        <div>
-          <h2>{{ month_label }}</h2>
-          <p class="muted">{{ selected_user.username }} | {{ presence_summary.total_entries }} badge in {{ presence_summary.days_with_entries }} giorni</p>
-        </div>
+        <h2 class="calendar-month-title">{{ month_label }}</h2>
         <a
           class="calendar-month-arrow"
           href="{{ url_for('calendar_page', month=next_month, user_id=selected_corem_user_id if user.is_admin else None) }}"
@@ -61,26 +58,17 @@
                       <article class="calendar-entry">
                         <div class="calendar-entry-top">
                           <strong>{{ entry.time }}</strong>
-                        </div>
-                        {% if entry.address %}
-                          <div class="calendar-entry-address-row">
-                            <div class="calendar-entry-address" title="{{ entry.address }}">{{ entry.address[:28] ~ "..." if entry.address|length > 28 else entry.address }}</div>
-                            {% if entry.address|length > 28 %}
-                              <button
-                                type="button"
-                                class="calendar-entry-toggle"
-                                aria-expanded="false"
-                                aria-label="Mostra indirizzo completo"
-                                title="Mostra indirizzo completo"
-                                onclick="toggleCalendarAddress(this)">
-                                <i data-lucide="chevron-down"></i>
-                              </button>
-                            {% endif %}
-                          </div>
-                          {% if entry.address|length > 28 %}
-                            <div class="calendar-entry-address-full" hidden>{{ entry.address }}</div>
+                          {% if entry.address %}
+                            <button
+                              type="button"
+                              class="calendar-entry-info-btn"
+                              data-entry-time="{{ entry.time }}"
+                              data-entry-address="{{ entry.address }}"
+                              onclick="openCalendarInfo(this)">
+                              altre info
+                            </button>
                           {% endif %}
-                        {% endif %}
+                        </div>
                       </article>
                     {% endfor %}
                   </div>
@@ -96,36 +84,51 @@
       </div>
     </div>
   </div>
+  <div class="calendar-info-modal" id="calendarInfoModal" aria-hidden="true">
+    <div class="calendar-info-backdrop" onclick="closeCalendarInfo()"></div>
+    <div class="calendar-info-dialog" role="dialog" aria-modal="true" aria-labelledby="calendarInfoTitle">
+      <div class="calendar-info-head">
+        <h2 id="calendarInfoTitle">Dettaglio presenza</h2>
+        <button type="button" class="calendar-info-close" aria-label="Chiudi" onclick="closeCalendarInfo()">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <div class="calendar-info-body">
+        <div class="calendar-info-row">
+          <span class="muted">Orario</span>
+          <strong id="calendarInfoTime">-</strong>
+        </div>
+        <div class="calendar-info-row calendar-info-row-address">
+          <span class="muted">Indirizzo</span>
+          <div id="calendarInfoAddress">-</div>
+        </div>
+      </div>
+    </div>
+  </div>
   <script>
-    function toggleCalendarAddress(button) {
-      const entry = button.closest('.calendar-entry');
-      const details = entry ? entry.querySelector('.calendar-entry-address-full') : null;
-      if (!entry || !details) return;
+    function openCalendarInfo(button) {
+      const modal = document.getElementById('calendarInfoModal');
+      const time = document.getElementById('calendarInfoTime');
+      const address = document.getElementById('calendarInfoAddress');
+      if (!modal || !time || !address) return;
 
-      const opening = details.hasAttribute('hidden');
-
-      if (window.innerWidth <= 800) {
-        document.querySelectorAll('.calendar-entry-address-full').forEach(function(panel) {
-          if (panel === details) return;
-          panel.setAttribute('hidden', '');
-        });
-        document.querySelectorAll('.calendar-entry-toggle[aria-expanded="true"]').forEach(function(toggle) {
-          if (toggle === button) return;
-          toggle.setAttribute('aria-expanded', 'false');
-        });
-      }
-
-      if (opening) {
-        details.removeAttribute('hidden');
-        button.setAttribute('aria-expanded', 'true');
-      } else {
-        details.setAttribute('hidden', '');
-        button.setAttribute('aria-expanded', 'false');
-      }
-
-      if (window.lucide) {
-        window.lucide.createIcons();
-      }
+      time.textContent = button.dataset.entryTime || '-';
+      address.textContent = button.dataset.entryAddress || '-';
+      modal.classList.add('visible');
+      modal.setAttribute('aria-hidden', 'false');
     }
+
+    function closeCalendarInfo() {
+      const modal = document.getElementById('calendarInfoModal');
+      if (!modal) return;
+      modal.classList.remove('visible');
+      modal.setAttribute('aria-hidden', 'true');
+    }
+
+    document.addEventListener('keydown', function(event) {
+      if (event.key === 'Escape') {
+        closeCalendarInfo();
+      }
+    });
   </script>
 {% endblock %}
