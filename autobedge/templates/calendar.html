@@ -202,8 +202,22 @@
       const buttons = Array.from(modeWrap.querySelectorAll('[data-calendar-mode]'));
       const boards = Array.from(document.querySelectorAll('[data-calendar-board]'));
 
+      function isMobileCalendarMode() {
+        return window.innerWidth <= 800;
+      }
+
       function setMode(mode) {
         const nextMode = mode === 'detail' ? 'detail' : 'compact';
+        if (!isMobileCalendarMode()) {
+          buttons.forEach(function(button) {
+            button.classList.toggle('is-active', button.dataset.calendarMode === 'detail');
+            button.setAttribute('aria-pressed', button.dataset.calendarMode === 'detail' ? 'true' : 'false');
+          });
+          boards.forEach(function(board) {
+            board.hidden = board.dataset.calendarBoard !== 'detail';
+          });
+          return;
+        }
         buttons.forEach(function(button) {
           const active = button.dataset.calendarMode === nextMode;
           button.classList.toggle('is-active', active);
@@ -232,6 +246,15 @@
         initialMode = 'compact';
       }
       setMode(initialMode);
+      window.addEventListener('resize', function() {
+        let storedMode = 'compact';
+        try {
+          storedMode = window.localStorage.getItem(storageKey) || 'compact';
+        } catch (error) {
+          storedMode = 'compact';
+        }
+        setMode(storedMode);
+      });
     })();
   </script>
 {% endblock %}
