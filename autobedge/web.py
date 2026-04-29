@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 import secrets
 from calendar import monthrange
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from urllib.parse import urlencode
 
 from flask import Flask, Response, redirect, render_template, request, session, url_for
@@ -36,6 +36,7 @@ class WebServerManager:
     def create_app(self) -> Flask:
         app = Flask(__name__)
         app.secret_key = os.environ.get("AUTOBEDGE_SECRET_KEY", secrets.token_hex(32))
+        app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=30)
         self._configure_routes(app)
         return app
 
@@ -62,6 +63,7 @@ class WebServerManager:
             if user is None:
                 return self._login_page("Credenziali non valide.")
             session.clear()
+            session.permanent = True
             session["user_id"] = user.id
             return redirect(url_for("dashboard"))
 
