@@ -40,8 +40,7 @@ class SchedulerManager:
         self._settings = SchedulerSettings()
         self._startup_planning_handled = False
         self._auto_planning_triggered_date = ""
-        self._auto_planning_rearm_date = ""
-        self._startup_suppressed_auto_planning_date = ""
+        self._auto_planning_triggered_key = ""
         self._planning_status = PlanningStatusSnapshot()
         self._holidays: list[str] = []
         self._schedules: list[DailyScheduleSnapshot] = []
@@ -54,12 +53,11 @@ class SchedulerManager:
         self._holidays = self.storage.load_holidays() or []
         self._initialize_auto_planning_state()
         LOG.info(
-            "Scheduler avviato: startup_enabled=%s auto_time=%s triggered_date=%s rearm_date=%s suppressed_date=%s",
+            "Scheduler avviato: startup_enabled=%s auto_time=%s triggered_date=%s triggered_key=%s",
             self._settings.auto_startup_enabled,
             self._settings.auto_time,
             self._auto_planning_triggered_date or "-",
-            self._auto_planning_rearm_date or "-",
-            self._startup_suppressed_auto_planning_date or "-",
+            self._auto_planning_triggered_key or "-",
         )
         self._thread = threading.Thread(target=self._task_loop, name="autobedge-scheduler", daemon=True)
         self._thread.start()
@@ -103,9 +101,13 @@ class SchedulerManager:
         if not self.storage.save_scheduler_settings(settings):
             return False, "Impossibile salvare la configurazione scheduler."
         with self._lock:
-            previous_settings = replace(self._settings)
             self._settings = settings
-            self._rearm_auto_planning_if_needed_locked(previous_settings)
+            LOG.info(
+                "Impostazioni scheduler aggiornate: auto_time=%s exact=%s near=%s",
+                settings.auto_time,
+                settings.exact_badge_chance_percent,
+                settings.near_badge_offset_chance_percent,
+            )
         return True, ""
 
     def trigger_planning_now(self) -> tuple[bool, str]:
@@ -188,8 +190,7 @@ class SchedulerManager:
                 ok, message = self._execute_planning_for_date(current_date, 0)
                 if ok:
                     self._auto_planning_triggered_date = current_date
-                    self._auto_planning_rearm_date = ""
-                    self._startup_suppressed_auto_planning_date = ""
+                    self._auto_planning_triggered_key = self._auto_planning_key(current_date, self.get_settings())
                 LOG.info("Esito pianificazione automatica per %s: ok=%s message=%s", current_date, ok, message)
                 self._set_planning_status(False, ok, message)
             self._process_pending_planning_requests()
@@ -394,35 +395,11 @@ class SchedulerManager:
         scheduled_minutes = scheduled_hour * 60 + scheduled_minute
         if current_minutes >= scheduled_minutes:
             self._auto_planning_triggered_date = current_date
-            self._startup_suppressed_auto_planning_date = current_date
+            self._auto_planning_triggered_key = self._auto_planning_key(current_date, settings)
             LOG.info(
                 "Pianificazione automatica odierna soppressa all'avvio: startup disabilitato, ora corrente %s >= ora automatica %s.",
                 now_dt.strftime("%H:%M"),
                 settings.auto_time,
-            )
-
-    def _rearm_auto_planning_if_needed_locked(self, previous_settings: SchedulerSettings) -> None:
-        current_date = self.ntp_manager.get_current_date()
-        if not current_date:
-            return
-        settings_changed = (
-            previous_settings.auto_time != self._settings.auto_time
-            or previous_settings.exact_badge_chance_percent != self._settings.exact_badge_chance_percent
-            or previous_settings.near_badge_offset_chance_percent != self._settings.near_badge_offset_chance_percent
-        )
-        has_schedule = self._has_schedule_for_date(current_date)
-        if self._startup_suppressed_auto_planning_date == current_date:
-            self._auto_planning_triggered_date = ""
-            self._auto_planning_rearm_date = ""
-            self._startup_suppressed_auto_planning_date = ""
-            LOG.info("Pianificazione automatica odierna riarmata dopo modifica impostazioni scheduler.")
-            return
-        if has_schedule and settings_changed and self._auto_planning_triggered_date == current_date:
-            self._auto_planning_triggered_date = ""
-            self._auto_planning_rearm_date = current_date
-            LOG.info(
-                "Pianificazione automatica odierna verra' rigenerata dopo modifica impostazioni scheduler (nuovo auto_time=%s).",
-                self._settings.auto_time,
             )
 
     def _should_auto_plan(self, timeinfo: datetime, current_date: str) -> bool:
@@ -432,13 +409,22 @@ class SchedulerManager:
         scheduled_hour, scheduled_minute = [int(part) for part in settings.auto_time.split(":")]
         current_minutes = timeinfo.hour * 60 + timeinfo.minute
         scheduled_minutes = scheduled_hour * 60 + scheduled_minute
-        should_ignore_existing_schedule = self._auto_planning_rearm_date == current_date
         has_schedule = self._has_schedule_for_date(current_date)
+        current_key = self._auto_planning_key(current_date, settings)
+        allow_replan_with_new_key = (
+            has_schedule
+            and self._auto_planning_triggered_key.startswith(f"{current_date}|")
+            and self._auto_planning_triggered_key != current_key
+        )
         return (
             current_minutes >= scheduled_minutes
-            and self._auto_planning_triggered_date != current_date
-            and (should_ignore_existing_schedule or not has_schedule)
+            and self._auto_planning_triggered_key != current_key
+            and (allow_replan_with_new_key or not has_schedule)
         )
+
+    @staticmethod
+    def _auto_planning_key(date: str, settings: SchedulerSettings) -> str:
+        return f"{date}|{settings.auto_time}|{settings.exact_badge_chance_percent}|{settings.near_badge_offset_chance_percent}"
 
     def _has_schedule_for_date(self, date: str) -> bool:
         with self._lock:

@@ -118,6 +118,7 @@ class SchedulerManagerAutoPlanTests(unittest.TestCase):
         scheduler._initialize_auto_planning_state()
 
         self.assertEqual(scheduler._auto_planning_triggered_date, "2026-04-29")
+        self.assertEqual(scheduler._auto_planning_triggered_key, "2026-04-29|14:33|50|50")
 
     def test_begin_keeps_today_auto_plan_armed_if_started_before_auto_time_and_startup_is_disabled(self) -> None:
         ntp_manager = DummyNtpManager(datetime(2026, 4, 29, 14, 31, tzinfo=ZoneInfo("Europe/Rome")))
@@ -153,8 +154,7 @@ class SchedulerManagerAutoPlanTests(unittest.TestCase):
 
         self.assertTrue(ok)
         self.assertEqual(message, "")
-        self.assertEqual(scheduler._auto_planning_triggered_date, "")
-        self.assertEqual(scheduler._startup_suppressed_auto_planning_date, "")
+        self.assertEqual(scheduler._auto_planning_triggered_key, "2026-04-29|07:00|50|50")
         self.assertIsNotNone(storage.saved_settings)
 
     def test_rearmed_auto_plan_becomes_due_at_new_time(self) -> None:
@@ -195,8 +195,8 @@ class SchedulerManagerAutoPlanTests(unittest.TestCase):
 
         self.assertTrue(ok)
         self.assertEqual(message, "")
-        self.assertEqual(scheduler._auto_planning_triggered_date, "")
-        self.assertEqual(scheduler._auto_planning_rearm_date, "2026-04-29")
+        self.assertEqual(scheduler._auto_planning_triggered_date, "2026-04-29")
+        self.assertEqual(scheduler._auto_planning_triggered_key, "")
 
     def test_rearmed_auto_plan_ignores_existing_schedule_once(self) -> None:
         storage = DummyStorageManager()
@@ -211,6 +211,7 @@ class SchedulerManagerAutoPlanTests(unittest.TestCase):
         )
         scheduler._settings = SchedulerSettings(auto_startup_enabled=False, auto_time="14:20")
         scheduler._auto_planning_triggered_date = "2026-04-29"
+        scheduler._auto_planning_triggered_key = "2026-04-29|14:20|50|50"
         scheduler._schedules.append(DailyScheduleSnapshot(user_id=2, username="alice", date="2026-04-29"))
         scheduler.update_settings(SchedulerSettings(auto_startup_enabled=False, auto_time="14:33"))
 
@@ -229,6 +230,7 @@ class SchedulerManagerAutoPlanTests(unittest.TestCase):
         )
         scheduler._settings = SchedulerSettings(auto_startup_enabled=False, auto_time="14:33")
         scheduler._auto_planning_triggered_date = "2026-04-29"
+        scheduler._auto_planning_triggered_key = "2026-04-29|14:33|50|50"
 
         due = scheduler._should_auto_plan(datetime(2026, 4, 29, 14, 34, tzinfo=scheduler.ntp_manager.tz), "2026-04-29")
 
@@ -276,14 +278,14 @@ class SchedulerManagerAutoPlanTests(unittest.TestCase):
 
         self.assertTrue(ok)
         self.assertEqual(message, "")
-        self.assertEqual(scheduler._auto_planning_rearm_date, "2026-04-29")
+        self.assertEqual(scheduler._auto_planning_triggered_key, "2026-04-29|14:33|50|50")
 
         scheduler._run_scheduler_tick()
         second_schedule = scheduler.get_schedules_snapshot("2026-04-29")[0]
 
         self.assertEqual(len(scheduler.get_schedules_snapshot("2026-04-29")), 1)
         self.assertEqual(scheduler._auto_planning_triggered_date, "2026-04-29")
-        self.assertEqual(scheduler._auto_planning_rearm_date, "")
+        self.assertEqual(scheduler._auto_planning_triggered_key, "2026-04-29|14:34|50|50")
         self.assertNotEqual(first_schedule.planned_at, second_schedule.planned_at)
 
 
