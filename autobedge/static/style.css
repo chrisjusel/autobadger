@@ -897,7 +897,7 @@ a.pill:active {
 
 .map-container .leaflet-layer,
 .map-container .leaflet-tile-pane {
-  filter: brightness(.72) saturate(.85) hue-rotate(185deg);
+  filter: brightness(.98) saturate(.92);
 }
 
 .map-container::after {
@@ -906,7 +906,7 @@ a.pill:active {
   inset: 0;
   z-index: 400;
   pointer-events: none;
-  background: rgba(7, 19, 31, .18);
+  background: rgba(7, 19, 31, .04);
 }
 
 .leaflet-popup-content-wrapper {
