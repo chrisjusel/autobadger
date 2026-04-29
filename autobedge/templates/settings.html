@@ -1,5 +1,10 @@
 {% extends "base.html" %}
 
+{% block head %}
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+{% endblock %}
+
 {% block content %}
   <form method="post">
     <div class="split">
@@ -22,6 +27,18 @@
         <label>Longitudine casa<input name="home_lon" value="{{ '%.6f'|format(user.home_lon) }}"></label>
         <label>Accuratezza casa<input name="home_accuracy" value="{{ user.home_accuracy }}"></label>
       </div>
+      <div class="map-preview-wrap" id="map-wrap-casa">
+        <div class="map-preview-header">
+          <svg class="map-pin-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          <span>Anteprima posizione</span>
+          <span class="map-click-hint">clicca sulla mappa per spostare il punto</span>
+        </div>
+        <div class="map-container" id="map-casa"></div>
+        <div class="map-coords-readout" id="coords-casa">
+          <span>Lat: <b id="readout-lat-casa">-</b></span>
+          <span>Lng: <b id="readout-lng-casa">-</b></span>
+        </div>
+      </div>
     </div>
     <div class="card">
       <h2>Ufficio</h2>
@@ -29,6 +46,18 @@
         <label>Latitudine sede<input name="office_lat" value="{{ '%.6f'|format(user.office_lat) }}"></label>
         <label>Longitudine sede<input name="office_lon" value="{{ '%.6f'|format(user.office_lon) }}"></label>
         <label>Accuratezza sede<input name="office_accuracy" value="{{ user.office_accuracy }}"></label>
+      </div>
+      <div class="map-preview-wrap" id="map-wrap-ufficio">
+        <div class="map-preview-header">
+          <svg class="map-pin-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          <span>Anteprima posizione</span>
+          <span class="map-click-hint">clicca sulla mappa per spostare il punto</span>
+        </div>
+        <div class="map-container" id="map-ufficio"></div>
+        <div class="map-coords-readout" id="coords-ufficio">
+          <span>Lat: <b id="readout-lat-ufficio">-</b></span>
+          <span>Lng: <b id="readout-lng-ufficio">-</b></span>
+        </div>
       </div>
     </div>
     <div class="card">
@@ -54,4 +83,140 @@
       <button name="submit_action" value="save">Salva impostazioni</button>
     </div>
   </form>
+  <script>
+    (function () {
+      function accentMarker() {
+        return L.divIcon({
+          className: "",
+          iconSize: [32, 42],
+          iconAnchor: [16, 42],
+          popupAnchor: [0, -44],
+          html: `
+            <div style="position:relative;width:32px;height:42px;display:flex;flex-direction:column;align-items:center;">
+              <div style="
+                width:32px;height:32px;border-radius:50% 50% 50% 0;
+                background:linear-gradient(135deg,#4ecca3,#39b28b);
+                transform:rotate(-45deg);
+                box-shadow:0 4px 18px rgba(78,204,163,.5),0 0 0 3px rgba(78,204,163,.22);
+                display:flex;align-items:center;justify-content:center;
+              ">
+                <svg style="transform:rotate(45deg);width:14px;height:14px;fill:none;stroke:#072217;stroke-width:2.5;stroke-linecap:round;" viewBox="0 0 24 24">
+                  <circle cx="12" cy="12" r="4"/>
+                </svg>
+              </div>
+              <div style="
+                width:2px;height:10px;
+                background:linear-gradient(to bottom,#39b28b,transparent);
+              "></div>
+              <div style="
+                width:8px;height:3px;border-radius:50%;
+                background:rgba(78,204,163,.35);
+                margin-top:-1px;
+              "></div>
+            </div>
+          `
+        });
+      }
+
+      function formatPopup(label, lat, lng) {
+        return `<b style="font-size:.85rem">${label}</b><br><span style="color:#a9bed5;font-size:.75rem">${lat.toFixed(6)}, ${lng.toFixed(6)}</span>`;
+      }
+
+      function createLocationMap(opts) {
+        if (!window.L || !opts.inputLat || !opts.inputLng) return null;
+
+        const mapEl = document.getElementById(opts.mapId);
+        if (!mapEl) return null;
+
+        const inputLat = parseFloat(opts.inputLat.value);
+        const inputLng = parseFloat(opts.inputLng.value);
+        const lat0 = Number.isFinite(inputLat) && inputLat >= -90 && inputLat <= 90 ? inputLat : opts.defaultLat;
+        const lng0 = Number.isFinite(inputLng) && inputLng >= -180 && inputLng <= 180 ? inputLng : opts.defaultLng;
+
+        const map = L.map(opts.mapId, {
+          center: [lat0, lng0],
+          zoom: 15,
+          zoomControl: true,
+          attributionControl: true
+        });
+
+        L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          maxZoom: 19,
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>'
+        }).addTo(map);
+
+        const marker = L.marker([lat0, lng0], { icon: accentMarker(), draggable: true }).addTo(map);
+        marker.bindPopup(formatPopup(opts.label, lat0, lng0));
+
+        function updateReadout(lat, lng) {
+          const readoutLat = document.getElementById(opts.readoutLatId);
+          const readoutLng = document.getElementById(opts.readoutLngId);
+          if (readoutLat) readoutLat.textContent = Number.isFinite(lat) ? lat.toFixed(6) : "-";
+          if (readoutLng) readoutLng.textContent = Number.isFinite(lng) ? lng.toFixed(6) : "-";
+        }
+
+        function syncMapFromInputs() {
+          const lat = parseFloat(opts.inputLat.value);
+          const lng = parseFloat(opts.inputLng.value);
+          if (Number.isFinite(lat) && Number.isFinite(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+            marker.setLatLng([lat, lng]);
+            map.setView([lat, lng], map.getZoom(), { animate: true, duration: 0.4 });
+            marker.setPopupContent(formatPopup(opts.label, lat, lng));
+            updateReadout(lat, lng);
+          }
+        }
+
+        function syncInputsFromLatLng(lat, lng, openPopup) {
+          marker.setLatLng([lat, lng]);
+          opts.inputLat.value = lat.toFixed(6);
+          opts.inputLng.value = lng.toFixed(6);
+          marker.setPopupContent(formatPopup(opts.label, lat, lng));
+          if (openPopup) marker.openPopup();
+          updateReadout(lat, lng);
+        }
+
+        map.on("click", function (event) {
+          syncInputsFromLatLng(event.latlng.lat, event.latlng.lng, true);
+        });
+
+        marker.on("dragend", function () {
+          const latLng = marker.getLatLng();
+          syncInputsFromLatLng(latLng.lat, latLng.lng, false);
+        });
+
+        opts.inputLat.addEventListener("input", syncMapFromInputs);
+        opts.inputLng.addEventListener("input", syncMapFromInputs);
+        updateReadout(lat0, lng0);
+        setTimeout(function () {
+          map.invalidateSize();
+        }, 200);
+
+        return map;
+      }
+
+      document.addEventListener("DOMContentLoaded", function () {
+        createLocationMap({
+          mapId: "map-casa",
+          inputLat: document.querySelector('[name="home_lat"]'),
+          inputLng: document.querySelector('[name="home_lon"]'),
+          readoutLatId: "readout-lat-casa",
+          readoutLngId: "readout-lng-casa",
+          label: "Casa",
+          defaultLat: 40.929665,
+          defaultLng: 14.214740
+        });
+
+        createLocationMap({
+          mapId: "map-ufficio",
+          inputLat: document.querySelector('[name="office_lat"]'),
+          inputLng: document.querySelector('[name="office_lon"]'),
+          readoutLatId: "readout-lat-ufficio",
+          readoutLngId: "readout-lng-ufficio",
+          label: "Ufficio",
+          defaultLat: 40.856935,
+          defaultLng: 14.278463
+        });
+      });
+    })();
+  </script>
 {% endblock %}
