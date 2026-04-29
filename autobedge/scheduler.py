@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import random
 import threading
 import time
@@ -12,6 +13,8 @@ from .notification_manager import NotificationManager
 from .storage import StorageManager
 from .time_manager import NTPManager
 from .user_manager import UserManager
+
+LOG = logging.getLogger(__name__)
 
 
 class SchedulerManager:
@@ -47,6 +50,7 @@ class SchedulerManager:
     def begin(self) -> None:
         self._settings = self.storage.load_scheduler_settings() or SchedulerSettings()
         self._holidays = self.storage.load_holidays() or []
+        self._initialize_auto_planning_state()
         self._thread = threading.Thread(target=self._task_loop, name="autobedge-scheduler", daemon=True)
         self._thread.start()
 
@@ -347,6 +351,25 @@ class SchedulerManager:
         self._startup_planning_handled = True
         settings = self.get_settings()
         return settings.auto_startup_enabled and not self._has_schedule_for_date(current_date)
+
+    def _initialize_auto_planning_state(self) -> None:
+        current_date = self.ntp_manager.get_current_date()
+        if not current_date:
+            return
+        settings = self.get_settings()
+        if settings.auto_startup_enabled or not self._is_valid_time_value(settings.auto_time):
+            return
+        now_dt = self.ntp_manager.local_datetime()
+        current_minutes = now_dt.hour * 60 + now_dt.minute
+        scheduled_hour, scheduled_minute = [int(part) for part in settings.auto_time.split(":")]
+        scheduled_minutes = scheduled_hour * 60 + scheduled_minute
+        if current_minutes >= scheduled_minutes:
+            self._auto_planning_triggered_date = current_date
+            LOG.info(
+                "Pianificazione automatica odierna soppressa all'avvio: startup disabilitato, ora corrente %s >= ora automatica %s.",
+                now_dt.strftime("%H:%M"),
+                settings.auto_time,
+            )
 
     def _should_auto_plan(self, timeinfo: datetime, current_date: str) -> bool:
         settings = self.get_settings()
