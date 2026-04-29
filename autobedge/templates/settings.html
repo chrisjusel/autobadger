@@ -85,38 +85,12 @@
   </form>
   <script>
     (function () {
-      function accentMarker() {
-        return L.divIcon({
-          className: "",
-          iconSize: [32, 42],
-          iconAnchor: [16, 42],
-          popupAnchor: [0, -44],
-          html: `
-            <div style="position:relative;width:32px;height:42px;display:flex;flex-direction:column;align-items:center;">
-              <div style="
-                width:32px;height:32px;border-radius:50% 50% 50% 0;
-                background:linear-gradient(135deg,#4ecca3,#39b28b);
-                transform:rotate(-45deg);
-                box-shadow:0 4px 18px rgba(78,204,163,.5),0 0 0 3px rgba(78,204,163,.22);
-                display:flex;align-items:center;justify-content:center;
-              ">
-                <svg style="transform:rotate(45deg);width:14px;height:14px;fill:none;stroke:#072217;stroke-width:2.5;stroke-linecap:round;" viewBox="0 0 24 24">
-                  <circle cx="12" cy="12" r="4"/>
-                </svg>
-              </div>
-              <div style="
-                width:2px;height:10px;
-                background:linear-gradient(to bottom,#39b28b,transparent);
-              "></div>
-              <div style="
-                width:8px;height:3px;border-radius:50%;
-                background:rgba(78,204,163,.35);
-                margin-top:-1px;
-              "></div>
-            </div>
-          `
-        });
-      }
+      const customIcon = L.icon({
+        iconUrl: "./img/mio-pin.png",
+        iconSize: [32, 42],
+        iconAnchor: [16, 42],
+        popupAnchor: [0, -44]
+      });
 
       function formatPopup(label, lat, lng) {
         return `<b style="font-size:.85rem">${label}</b><br><span style="color:#a9bed5;font-size:.75rem">${lat.toFixed(6)}, ${lng.toFixed(6)}</span>`;
@@ -145,7 +119,7 @@
           attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>'
         }).addTo(map);
 
-        const marker = L.marker([lat0, lng0], { icon: accentMarker(), draggable: true }).addTo(map);
+        const marker = L.marker([lat0, lng0], { icon: customIcon }).addTo(map);
         marker.bindPopup(formatPopup(opts.label, lat0, lng0));
 
         function updateReadout(lat, lng) {
