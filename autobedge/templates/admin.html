@@ -22,49 +22,12 @@
       <label class="check"><input type="checkbox" name="auto_startup_enabled" {% if scheduler.auto_startup_enabled %}checked{% endif %}> Pianifica allo startup</label>
       <div class="grid">
         <label>Ora automatica<input class="scheduler-time-input" type="time" name="auto_time" value="{{ scheduler.auto_time }}"></label>
-        <div class="scheduler-split-slider">
-          <div class="scheduler-split-labels">
-            <span>Puntuale: <b id="schedulerExactValue">{{ scheduler.exact_badge_chance_percent }}%</b></span>
-            <span>Offset: <b id="schedulerOffsetValue">{{ 100 - scheduler.exact_badge_chance_percent }}%</b></span>
-          </div>
-          <input type="range" id="schedulerSplitRange" min="0" max="100" value="{{ scheduler.exact_badge_chance_percent }}">
-          <input type="hidden" id="schedulerExactInput" name="exact_badge_chance_percent" value="{{ scheduler.exact_badge_chance_percent }}">
-          <input type="hidden" id="schedulerOffsetInput" name="near_badge_offset_chance_percent" value="{{ 100 - scheduler.exact_badge_chance_percent }}">
-        </div>
+        <label>% orario puntuale<input name="exact_badge_chance_percent" value="{{ scheduler.exact_badge_chance_percent }}"></label>
+        <label>% offset vicino<input name="near_badge_offset_chance_percent" value="{{ scheduler.near_badge_offset_chance_percent }}"></label>
       </div>
       <div class="actions"><button>Salva scheduler</button></div>
     </form>
   </div>
-  <script>
-    (function () {
-      const range = document.getElementById("schedulerSplitRange");
-      const exactInput = document.getElementById("schedulerExactInput");
-      const offsetInput = document.getElementById("schedulerOffsetInput");
-      const exactValue = document.getElementById("schedulerExactValue");
-      const offsetValue = document.getElementById("schedulerOffsetValue");
-      if (!range || !exactInput || !offsetInput || !exactValue || !offsetValue) return;
-
-      function clampPercent(value) {
-        const number = Number.parseInt(value, 10);
-        if (Number.isNaN(number)) return 0;
-        return Math.max(0, Math.min(100, number));
-      }
-
-      function updateSchedulerSplit() {
-        const exact = clampPercent(range.value);
-        const offset = 100 - exact;
-        range.value = exact;
-        exactInput.value = exact;
-        offsetInput.value = offset;
-        exactValue.textContent = exact + "%";
-        offsetValue.textContent = offset + "%";
-        range.style.background = `linear-gradient(90deg, #4ecca3 0%, #4ecca3 ${exact}%, rgba(99,164,255,0.6) ${exact}%, rgba(99,164,255,0.6) 100%)`;
-      }
-
-      range.addEventListener("input", updateSchedulerSplit);
-      updateSchedulerSplit();
-    })();
-  </script>
   <div class="card table mobile-card-table admin-users-table">
     <h2>Utenti</h2>
     <div class="actions"><a class="btn" href="{{ url_for('admin_user') }}">Nuovo utente</a></div>
