@@ -13,11 +13,18 @@ class DummyUserManager:
 
 
 class DummyStorageManager:
+    def __init__(self) -> None:
+        self.saved_settings: SchedulerSettings | None = None
+
     def load_scheduler_settings(self) -> SchedulerSettings | None:
         return None
 
     def load_holidays(self) -> list[str] | None:
         return []
+
+    def save_scheduler_settings(self, settings: SchedulerSettings) -> bool:
+        self.saved_settings = settings
+        return True
 
 
 class DummyCoremApiManager:
@@ -87,6 +94,47 @@ class SchedulerManagerAutoPlanTests(unittest.TestCase):
         scheduler._initialize_auto_planning_state()
 
         self.assertEqual(scheduler._auto_planning_triggered_date, "")
+
+    def test_update_settings_rearms_today_auto_plan_if_startup_suppressed_it(self) -> None:
+        storage = DummyStorageManager()
+        ntp_manager = DummyNtpManager(datetime(2026, 4, 29, 14, 31, tzinfo=ZoneInfo("Europe/Rome")))
+        scheduler = SchedulerManager(
+            DummyUserManager(),
+            storage,
+            ntp_manager,
+            DummyCoremApiManager(),
+            DummyNotificationManager(),
+            dry_run=True,
+        )
+        scheduler._settings = SchedulerSettings(auto_startup_enabled=False, auto_time="07:00")
+        scheduler._initialize_auto_planning_state()
+
+        ok, message = scheduler.update_settings(SchedulerSettings(auto_startup_enabled=False, auto_time="14:33"))
+
+        self.assertTrue(ok)
+        self.assertEqual(message, "")
+        self.assertEqual(scheduler._auto_planning_triggered_date, "")
+        self.assertEqual(scheduler._startup_suppressed_auto_planning_date, "")
+        self.assertIsNotNone(storage.saved_settings)
+
+    def test_rearmed_auto_plan_becomes_due_at_new_time(self) -> None:
+        storage = DummyStorageManager()
+        ntp_manager = DummyNtpManager(datetime(2026, 4, 29, 14, 31, tzinfo=ZoneInfo("Europe/Rome")))
+        scheduler = SchedulerManager(
+            DummyUserManager(),
+            storage,
+            ntp_manager,
+            DummyCoremApiManager(),
+            DummyNotificationManager(),
+            dry_run=True,
+        )
+        scheduler._settings = SchedulerSettings(auto_startup_enabled=False, auto_time="07:00")
+        scheduler._initialize_auto_planning_state()
+        scheduler.update_settings(SchedulerSettings(auto_startup_enabled=False, auto_time="14:33"))
+
+        due = scheduler._should_auto_plan(datetime(2026, 4, 29, 14, 33, tzinfo=scheduler.ntp_manager.tz), "2026-04-29")
+
+        self.assertTrue(due)
 
     def test_auto_plan_does_not_run_twice_for_same_day(self) -> None:
         scheduler = SchedulerManager(

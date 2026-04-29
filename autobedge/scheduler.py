@@ -40,6 +40,7 @@ class SchedulerManager:
         self._settings = SchedulerSettings()
         self._startup_planning_handled = False
         self._auto_planning_triggered_date = ""
+        self._startup_suppressed_auto_planning_date = ""
         self._planning_status = PlanningStatusSnapshot()
         self._holidays: list[str] = []
         self._schedules: list[DailyScheduleSnapshot] = []
@@ -51,6 +52,13 @@ class SchedulerManager:
         self._settings = self.storage.load_scheduler_settings() or SchedulerSettings()
         self._holidays = self.storage.load_holidays() or []
         self._initialize_auto_planning_state()
+        LOG.info(
+            "Scheduler avviato: startup_enabled=%s auto_time=%s triggered_date=%s suppressed_date=%s",
+            self._settings.auto_startup_enabled,
+            self._settings.auto_time,
+            self._auto_planning_triggered_date or "-",
+            self._startup_suppressed_auto_planning_date or "-",
+        )
         self._thread = threading.Thread(target=self._task_loop, name="autobedge-scheduler", daemon=True)
         self._thread.start()
 
@@ -94,6 +102,7 @@ class SchedulerManager:
             return False, "Impossibile salvare la configurazione scheduler."
         with self._lock:
             self._settings = settings
+            self._rearm_auto_planning_if_needed_locked()
         return True, ""
 
     def trigger_planning_now(self) -> tuple[bool, str]:
@@ -152,20 +161,33 @@ class SchedulerManager:
 
     def _task_loop(self) -> None:
         while not self._stop.is_set():
-            self.ntp_manager.maintain()
-            now_dt = self.ntp_manager.local_datetime()
-            current_date = now_dt.strftime("%Y-%m-%d")
-            self._purge_past_schedules(current_date)
-            startup_due = self._should_auto_plan_at_startup(current_date)
-            daily_due = not startup_due and self._should_auto_plan(now_dt, current_date)
-            self._refresh_holidays_if_needed(now_dt)
-            if startup_due or daily_due:
-                self._set_planning_status(True, False, f"Pianificazione automatica in corso per {self._format_display_date(current_date)}.")
-                ok, message = self._execute_planning_for_date(current_date, 0)
-                self._auto_planning_triggered_date = current_date if ok else self._auto_planning_triggered_date
-                self._set_planning_status(False, ok, message)
-            self._process_pending_planning_requests()
-            self._execute_due_badges(self.ntp_manager.now())
+            try:
+                self.ntp_manager.maintain()
+                now_dt = self.ntp_manager.local_datetime()
+                current_date = now_dt.strftime("%Y-%m-%d")
+                self._purge_past_schedules(current_date)
+                startup_due = self._should_auto_plan_at_startup(current_date)
+                daily_due = not startup_due and self._should_auto_plan(now_dt, current_date)
+                self._refresh_holidays_if_needed(now_dt)
+                if startup_due or daily_due:
+                    LOG.info(
+                        "Trigger pianificazione automatica per %s alle %s (startup_due=%s daily_due=%s).",
+                        current_date,
+                        now_dt.strftime("%H:%M:%S"),
+                        startup_due,
+                        daily_due,
+                    )
+                    self._set_planning_status(True, False, f"Pianificazione automatica in corso per {self._format_display_date(current_date)}.")
+                    ok, message = self._execute_planning_for_date(current_date, 0)
+                    if ok:
+                        self._auto_planning_triggered_date = current_date
+                        self._startup_suppressed_auto_planning_date = ""
+                    LOG.info("Esito pianificazione automatica per %s: ok=%s message=%s", current_date, ok, message)
+                    self._set_planning_status(False, ok, message)
+                self._process_pending_planning_requests()
+                self._execute_due_badges(self.ntp_manager.now())
+            except Exception:
+                LOG.exception("Errore non gestito nel loop scheduler.")
             self._stop.wait(self.POLL_SECONDS)
 
     def _process_pending_planning_requests(self) -> None:
@@ -365,11 +387,21 @@ class SchedulerManager:
         scheduled_minutes = scheduled_hour * 60 + scheduled_minute
         if current_minutes >= scheduled_minutes:
             self._auto_planning_triggered_date = current_date
+            self._startup_suppressed_auto_planning_date = current_date
             LOG.info(
                 "Pianificazione automatica odierna soppressa all'avvio: startup disabilitato, ora corrente %s >= ora automatica %s.",
                 now_dt.strftime("%H:%M"),
                 settings.auto_time,
             )
+
+    def _rearm_auto_planning_if_needed_locked(self) -> None:
+        current_date = self.ntp_manager.get_current_date()
+        if not current_date or self._has_schedule_for_date(current_date):
+            return
+        if self._startup_suppressed_auto_planning_date == current_date:
+            self._auto_planning_triggered_date = ""
+            self._startup_suppressed_auto_planning_date = ""
+            LOG.info("Pianificazione automatica odierna riarmata dopo modifica impostazioni scheduler.")
 
     def _should_auto_plan(self, timeinfo: datetime, current_date: str) -> bool:
         settings = self.get_settings()
