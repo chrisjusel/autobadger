@@ -76,7 +76,8 @@
   const meta = document.querySelector('meta[name="autobedge-planning-status-url"]');
   const pendingOverlay = document.querySelector(".pending-overlay");
   const lockKey = "autobedge-planning-status-poller";
-  const lockTtlMs = 4000;
+  const lockTtlMs = 12000;
+  const pollIntervalMs = 5000;
   const instanceId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
   let polling = false;
 
@@ -167,5 +168,5 @@
   window.addEventListener("beforeunload", releaseLock);
 
   checkPlanningStatus();
-  window.setInterval(checkPlanningStatus, 1000);
+  window.setInterval(checkPlanningStatus, pollIntervalMs);
 })();

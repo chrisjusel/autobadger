@@ -1,15 +1,22 @@
 from __future__ import annotations
 
 import unittest
-from datetime import datetime
+from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
-from autobedge.models import DailyScheduleSnapshot, SchedulerSettings
+from autobedge.models import DailyAttendancePolicy, DailyScheduleSnapshot, SchedulerSettings, UserProfile
 from autobedge.scheduler import SchedulerManager
 
 
 class DummyUserManager:
-    pass
+    def __init__(self, users: list[UserProfile] | None = None) -> None:
+        self._users = users or []
+
+    def get_corem_enabled_users(self) -> list[UserProfile]:
+        return list(self._users)
+
+    def get_user_by_id(self, user_id: int) -> UserProfile | None:
+        return next((user for user in self._users if user.id == user_id), None)
 
 
 class DummyStorageManager:
@@ -26,13 +33,24 @@ class DummyStorageManager:
         self.saved_settings = settings
         return True
 
+    def save_holidays(self, holidays: list[str]) -> bool:
+        return True
+
 
 class DummyCoremApiManager:
-    pass
+    def fetch_holidays(self, user: UserProfile) -> tuple[bool, list[str], str]:
+        return True, [], ""
+
+    def fetch_daily_policy(self, user: UserProfile, date: str) -> tuple[bool, DailyAttendancePolicy, str]:
+        return True, DailyAttendancePolicy(), ""
+
+    def submit_badge(self, user: UserProfile, in_office: bool, type_: str) -> tuple[bool, str]:
+        return True, "DRY RUN"
 
 
 class DummyNotificationManager:
-    pass
+    def send_badge_notification(self, user: UserProfile, in_office: bool, type_: str, note: str, timestamp: str, dry_run: bool) -> bool:
+        return True
 
 
 class DummyNtpManager:
@@ -43,11 +61,33 @@ class DummyNtpManager:
     def local_datetime(self) -> datetime:
         return self._current_dt
 
+    def set_current_datetime(self, current_dt: datetime) -> None:
+        self._current_dt = current_dt
+
     def get_current_date(self) -> str:
         return self._current_dt.strftime("%Y-%m-%d")
 
+    def maintain(self) -> None:
+        return None
+
+    def now(self) -> float:
+        return self._current_dt.timestamp()
+
+    def get_current_timestamp(self) -> str:
+        return self._current_dt.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S%z")
+
 
 class SchedulerManagerAutoPlanTests(unittest.TestCase):
+    @staticmethod
+    def _corem_user() -> UserProfile:
+        return UserProfile(
+            id=2,
+            username="alice",
+            corem_username="alice",
+            corem_password="secret",
+            office_days=[0, 1, 2, 3, 4],
+        )
+
     def test_auto_plan_uses_auto_time_even_when_startup_flag_is_disabled(self) -> None:
         scheduler = SchedulerManager(
             DummyUserManager(),
@@ -193,6 +233,58 @@ class SchedulerManagerAutoPlanTests(unittest.TestCase):
         due = scheduler._should_auto_plan(datetime(2026, 4, 29, 14, 34, tzinfo=scheduler.ntp_manager.tz), "2026-04-29")
 
         self.assertFalse(due)
+
+    def test_scheduler_tick_creates_first_automatic_plan_at_configured_time(self) -> None:
+        ntp_manager = DummyNtpManager(datetime(2026, 4, 29, 14, 33, tzinfo=ZoneInfo("Europe/Rome")))
+        scheduler = SchedulerManager(
+            DummyUserManager([self._corem_user()]),
+            DummyStorageManager(),
+            ntp_manager,
+            DummyCoremApiManager(),
+            DummyNotificationManager(),
+            dry_run=True,
+        )
+        scheduler._settings = SchedulerSettings(auto_startup_enabled=False, auto_time="14:33")
+        scheduler._startup_planning_handled = True
+
+        scheduler._run_scheduler_tick()
+
+        schedules = scheduler.get_schedules_snapshot("2026-04-29")
+        self.assertEqual(len(schedules), 1)
+        self.assertEqual(scheduler._auto_planning_triggered_date, "2026-04-29")
+        self.assertFalse(scheduler.get_planning_status().pending)
+        self.assertTrue(scheduler.get_planning_status().success)
+
+    def test_scheduler_tick_recreates_automatic_plan_after_same_day_time_change(self) -> None:
+        ntp_manager = DummyNtpManager(datetime(2026, 4, 29, 14, 33, tzinfo=ZoneInfo("Europe/Rome")))
+        scheduler = SchedulerManager(
+            DummyUserManager([self._corem_user()]),
+            DummyStorageManager(),
+            ntp_manager,
+            DummyCoremApiManager(),
+            DummyNotificationManager(),
+            dry_run=True,
+        )
+        scheduler._settings = SchedulerSettings(auto_startup_enabled=False, auto_time="14:33")
+        scheduler._startup_planning_handled = True
+
+        scheduler._run_scheduler_tick()
+        first_schedule = scheduler.get_schedules_snapshot("2026-04-29")[0]
+
+        ntp_manager.set_current_datetime(datetime(2026, 4, 29, 14, 34, tzinfo=ZoneInfo("Europe/Rome")))
+        ok, message = scheduler.update_settings(SchedulerSettings(auto_startup_enabled=False, auto_time="14:34"))
+
+        self.assertTrue(ok)
+        self.assertEqual(message, "")
+        self.assertEqual(scheduler._auto_planning_rearm_date, "2026-04-29")
+
+        scheduler._run_scheduler_tick()
+        second_schedule = scheduler.get_schedules_snapshot("2026-04-29")[0]
+
+        self.assertEqual(len(scheduler.get_schedules_snapshot("2026-04-29")), 1)
+        self.assertEqual(scheduler._auto_planning_triggered_date, "2026-04-29")
+        self.assertEqual(scheduler._auto_planning_rearm_date, "")
+        self.assertNotEqual(first_schedule.planned_at, second_schedule.planned_at)
 
 
 if __name__ == "__main__":

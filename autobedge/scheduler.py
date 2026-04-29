@@ -18,7 +18,7 @@ LOG = logging.getLogger(__name__)
 
 
 class SchedulerManager:
-    POLL_SECONDS = 30
+    POLL_SECONDS = 5
 
     def __init__(
         self,
@@ -164,35 +164,38 @@ class SchedulerManager:
 
     def _task_loop(self) -> None:
         while not self._stop.is_set():
-            try:
-                self.ntp_manager.maintain()
-                now_dt = self.ntp_manager.local_datetime()
-                current_date = now_dt.strftime("%Y-%m-%d")
-                self._purge_past_schedules(current_date)
-                startup_due = self._should_auto_plan_at_startup(current_date)
-                daily_due = not startup_due and self._should_auto_plan(now_dt, current_date)
-                self._refresh_holidays_if_needed(now_dt)
-                if startup_due or daily_due:
-                    LOG.info(
-                        "Trigger pianificazione automatica per %s alle %s (startup_due=%s daily_due=%s).",
-                        current_date,
-                        now_dt.strftime("%H:%M:%S"),
-                        startup_due,
-                        daily_due,
-                    )
-                    self._set_planning_status(True, False, f"Pianificazione automatica in corso per {self._format_display_date(current_date)}.")
-                    ok, message = self._execute_planning_for_date(current_date, 0)
-                    if ok:
-                        self._auto_planning_triggered_date = current_date
-                        self._auto_planning_rearm_date = ""
-                        self._startup_suppressed_auto_planning_date = ""
-                    LOG.info("Esito pianificazione automatica per %s: ok=%s message=%s", current_date, ok, message)
-                    self._set_planning_status(False, ok, message)
-                self._process_pending_planning_requests()
-                self._execute_due_badges(self.ntp_manager.now())
-            except Exception:
-                LOG.exception("Errore non gestito nel loop scheduler.")
+            self._run_scheduler_tick()
             self._stop.wait(self.POLL_SECONDS)
+
+    def _run_scheduler_tick(self) -> None:
+        try:
+            self.ntp_manager.maintain()
+            now_dt = self.ntp_manager.local_datetime()
+            current_date = now_dt.strftime("%Y-%m-%d")
+            self._purge_past_schedules(current_date)
+            startup_due = self._should_auto_plan_at_startup(current_date)
+            daily_due = not startup_due and self._should_auto_plan(now_dt, current_date)
+            self._refresh_holidays_if_needed(now_dt)
+            if startup_due or daily_due:
+                LOG.info(
+                    "Trigger pianificazione automatica per %s alle %s (startup_due=%s daily_due=%s).",
+                    current_date,
+                    now_dt.strftime("%H:%M:%S"),
+                    startup_due,
+                    daily_due,
+                )
+                self._set_planning_status(True, False, f"Pianificazione automatica in corso per {self._format_display_date(current_date)}.")
+                ok, message = self._execute_planning_for_date(current_date, 0)
+                if ok:
+                    self._auto_planning_triggered_date = current_date
+                    self._auto_planning_rearm_date = ""
+                    self._startup_suppressed_auto_planning_date = ""
+                LOG.info("Esito pianificazione automatica per %s: ok=%s message=%s", current_date, ok, message)
+                self._set_planning_status(False, ok, message)
+            self._process_pending_planning_requests()
+            self._execute_due_badges(self.ntp_manager.now())
+        except Exception:
+            LOG.exception("Errore non gestito nel loop scheduler.")
 
     def _process_pending_planning_requests(self) -> None:
         with self._lock:
