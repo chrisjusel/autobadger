@@ -614,12 +614,30 @@ label {
 }
 
 .settings-preferences-split {
-  align-items: start;
+  align-items: stretch;
 }
 
 .settings-card-hint {
   margin-bottom: 14px;
   font-size: .9rem;
+}
+
+.ntfy-topic-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: end;
+  margin-top: 12px;
+}
+
+.ntfy-topic-row label {
+  min-width: 0;
+}
+
+.ntfy-topic-row button {
+  min-width: 174px;
+  margin-top: 0;
+  white-space: nowrap;
 }
 
 .office-day-picker {
@@ -1552,6 +1570,15 @@ a.pill:active {
     height: 16px;
     flex-basis: 16px;
     border-radius: 5px;
+  }
+
+  .ntfy-topic-row {
+    grid-template-columns: 1fr;
+  }
+
+  .ntfy-topic-row button {
+    min-width: 0;
+    width: 100%;
   }
 
   .card {

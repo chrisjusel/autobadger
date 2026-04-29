@@ -76,9 +76,10 @@
       </div>
       <div class="card">
         <h2>Notifiche ntfy</h2>
+        <p class="muted settings-card-hint">Ricevi un avviso quando una timbratura viene eseguita.</p>
         <label class="check"><input type="checkbox" name="ntfy_enabled" {% if user.ntfy_enabled %}checked{% endif %}> Abilita notifiche ntfy</label>
-        <label>Topic<input name="ntfy_topic" value="{{ user.ntfy_topic }}"></label>
-        <div class="actions">
+        <div class="ntfy-topic-row">
+          <label>Topic<input name="ntfy_topic" value="{{ user.ntfy_topic }}"></label>
           <button class="alt" name="submit_action" value="test_ntfy">Testa notifiche</button>
         </div>
       </div>
