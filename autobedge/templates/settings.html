@@ -86,7 +86,7 @@
   <script>
     (function () {
       const customIcon = L.icon({
-        iconUrl: "./img/mio-pin.png",
+        iconUrl: "{{ url_for('static', filename='img/mio-pin.png') }}",
         iconSize: [32, 42],
         iconAnchor: [16, 42],
         popupAnchor: [0, -44]
