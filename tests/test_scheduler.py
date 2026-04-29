@@ -4,7 +4,7 @@ import unittest
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from autobedge.models import SchedulerSettings
+from autobedge.models import DailyScheduleSnapshot, SchedulerSettings
 from autobedge.scheduler import SchedulerManager
 
 
@@ -130,6 +130,48 @@ class SchedulerManagerAutoPlanTests(unittest.TestCase):
         )
         scheduler._settings = SchedulerSettings(auto_startup_enabled=False, auto_time="07:00")
         scheduler._initialize_auto_planning_state()
+        scheduler.update_settings(SchedulerSettings(auto_startup_enabled=False, auto_time="14:33"))
+
+        due = scheduler._should_auto_plan(datetime(2026, 4, 29, 14, 33, tzinfo=scheduler.ntp_manager.tz), "2026-04-29")
+
+        self.assertTrue(due)
+
+    def test_update_settings_rearms_today_auto_plan_even_with_existing_schedule(self) -> None:
+        storage = DummyStorageManager()
+        ntp_manager = DummyNtpManager(datetime(2026, 4, 29, 14, 31, tzinfo=ZoneInfo("Europe/Rome")))
+        scheduler = SchedulerManager(
+            DummyUserManager(),
+            storage,
+            ntp_manager,
+            DummyCoremApiManager(),
+            DummyNotificationManager(),
+            dry_run=True,
+        )
+        scheduler._settings = SchedulerSettings(auto_startup_enabled=False, auto_time="14:20")
+        scheduler._auto_planning_triggered_date = "2026-04-29"
+        scheduler._schedules.append(DailyScheduleSnapshot(user_id=2, username="alice", date="2026-04-29"))
+
+        ok, message = scheduler.update_settings(SchedulerSettings(auto_startup_enabled=False, auto_time="14:33"))
+
+        self.assertTrue(ok)
+        self.assertEqual(message, "")
+        self.assertEqual(scheduler._auto_planning_triggered_date, "")
+        self.assertEqual(scheduler._auto_planning_rearm_date, "2026-04-29")
+
+    def test_rearmed_auto_plan_ignores_existing_schedule_once(self) -> None:
+        storage = DummyStorageManager()
+        ntp_manager = DummyNtpManager(datetime(2026, 4, 29, 14, 31, tzinfo=ZoneInfo("Europe/Rome")))
+        scheduler = SchedulerManager(
+            DummyUserManager(),
+            storage,
+            ntp_manager,
+            DummyCoremApiManager(),
+            DummyNotificationManager(),
+            dry_run=True,
+        )
+        scheduler._settings = SchedulerSettings(auto_startup_enabled=False, auto_time="14:20")
+        scheduler._auto_planning_triggered_date = "2026-04-29"
+        scheduler._schedules.append(DailyScheduleSnapshot(user_id=2, username="alice", date="2026-04-29"))
         scheduler.update_settings(SchedulerSettings(auto_startup_enabled=False, auto_time="14:33"))
 
         due = scheduler._should_auto_plan(datetime(2026, 4, 29, 14, 33, tzinfo=scheduler.ntp_manager.tz), "2026-04-29")

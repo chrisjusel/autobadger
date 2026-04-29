@@ -75,14 +75,62 @@
 (function () {
   const meta = document.querySelector('meta[name="autobedge-planning-status-url"]');
   const pendingOverlay = document.querySelector(".pending-overlay");
+  const lockKey = "autobedge-planning-status-poller";
+  const lockTtlMs = 4000;
+  const instanceId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
   let polling = false;
 
-  if (!meta || pendingOverlay) {
+  if (!meta || pendingOverlay || window.__autobedgePlanningStatusPollingStarted) {
     return;
+  }
+  window.__autobedgePlanningStatusPollingStarted = true;
+
+  function nowMs() {
+    return Date.now();
+  }
+
+  function readLock() {
+    try {
+      const raw = window.localStorage.getItem(lockKey);
+      return raw ? JSON.parse(raw) : null;
+    } catch (_error) {
+      return null;
+    }
+  }
+
+  function writeLock() {
+    try {
+      window.localStorage.setItem(lockKey, JSON.stringify({ id: instanceId, ts: nowMs() }));
+    } catch (_error) {}
+  }
+
+  function releaseLock() {
+    try {
+      const current = readLock();
+      if (current && current.id === instanceId) {
+        window.localStorage.removeItem(lockKey);
+      }
+    } catch (_error) {}
+  }
+
+  function hasLeadership() {
+    if (document.visibilityState === "hidden") {
+      return false;
+    }
+    const current = readLock();
+    if (!current || nowMs() - Number(current.ts || 0) > lockTtlMs) {
+      writeLock();
+      return true;
+    }
+    if (current.id === instanceId) {
+      writeLock();
+      return true;
+    }
+    return false;
   }
 
   function checkPlanningStatus() {
-    if (polling) {
+    if (polling || !hasLeadership()) {
       return;
     }
     polling = true;
@@ -108,5 +156,16 @@
       });
   }
 
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "visible") {
+      checkPlanningStatus();
+      return;
+    }
+    releaseLock();
+  });
+  window.addEventListener("pagehide", releaseLock);
+  window.addEventListener("beforeunload", releaseLock);
+
+  checkPlanningStatus();
   window.setInterval(checkPlanningStatus, 1000);
 })();
