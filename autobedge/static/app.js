@@ -71,3 +71,42 @@
 
   window.addEventListener("touchcancel", reset, { passive: true });
 })();
+
+(function () {
+  const meta = document.querySelector('meta[name="autobedge-planning-status-url"]');
+  const pendingOverlay = document.querySelector(".pending-overlay");
+  let polling = false;
+
+  if (!meta || pendingOverlay) {
+    return;
+  }
+
+  function checkPlanningStatus() {
+    if (polling) {
+      return;
+    }
+    polling = true;
+    window.fetch(meta.content, {
+      credentials: "same-origin",
+      cache: "no-store",
+      headers: { "X-Requested-With": "XMLHttpRequest" },
+    })
+      .then(function (response) {
+        if (!response.ok) {
+          return null;
+        }
+        return response.json();
+      })
+      .then(function (payload) {
+        if (payload && payload.pending) {
+          window.location.reload();
+        }
+      })
+      .catch(function () {})
+      .finally(function () {
+        polling = false;
+      });
+  }
+
+  window.setInterval(checkPlanningStatus, 1000);
+})();

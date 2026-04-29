@@ -6,7 +6,7 @@ from calendar import monthrange
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urlencode
 
-from flask import Flask, Response, redirect, render_template, request, session, url_for
+from flask import Flask, Response, jsonify, redirect, render_template, request, session, url_for
 
 from .corem_api import CoremApiManager
 from .models import CoremEventEntry, CoremPresenceEntry, DailyScheduleSnapshot, NtfySettings, SchedulerSettings, UserProfile
@@ -41,6 +41,18 @@ class WebServerManager:
         return app
 
     def _configure_routes(self, app: Flask) -> None:
+        @app.before_request
+        def guard_pending_planning() -> Response | str | None:
+            if request.endpoint in {"static", "favicon_ico", "login", "login_post", "logout", "planning_status"}:
+                return None
+            user = self._current_user()
+            if user is None:
+                return None
+            planning_status = self.scheduler_manager.get_planning_status()
+            if planning_status.pending:
+                return self._planning_pending_page(user, planning_status.message)
+            return None
+
         @app.get("/favicon.ico")
         def favicon_ico() -> Response:
             return redirect(url_for("static", filename="img/favicon-32x32.png"))
@@ -77,10 +89,22 @@ class WebServerManager:
             user = self._require_auth()
             if not isinstance(user, UserProfile):
                 return user
-            planning_status = self.scheduler_manager.get_planning_status()
-            if planning_status.pending:
-                return self._planning_pending_page(user, planning_status.message)
             return self._dashboard_page(user, request.args.get("msg", ""))
+
+        @app.get("/api/planning-status")
+        def planning_status() -> Response:
+            user = self._require_auth()
+            if not isinstance(user, UserProfile):
+                return user
+            snapshot = self.scheduler_manager.get_planning_status()
+            return jsonify(
+                {
+                    "pending": snapshot.pending,
+                    "success": snapshot.success,
+                    "message": snapshot.message,
+                    "timestamp": snapshot.timestamp,
+                }
+            )
 
         @app.get("/calendar")
         def calendar_page() -> str | Response:
