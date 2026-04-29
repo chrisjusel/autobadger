@@ -60,23 +60,27 @@
         </div>
       </div>
     </div>
-    <div class="card">
-      <h2>Giorni in ufficio</h2>
-      <div class="checkrow">
-        {% for label in day_labels %}
-          <label class="check">
-            <input type="checkbox" name="office_day" value="{{ loop.index0 }}" {% if loop.index0 in user.office_days %}checked{% endif %}>
-            {{ label }}
-          </label>
-        {% endfor %}
+    <div class="split settings-preferences-split">
+      <div class="card">
+        <h2>Giorni in ufficio</h2>
+        <p class="muted settings-card-hint">Scegli quando usare la posizione della sede per la timbratura.</p>
+        <div class="office-day-picker">
+          {% for label in day_labels %}
+            <label class="office-day-toggle">
+              <input type="checkbox" name="office_day" value="{{ loop.index0 }}" {% if loop.index0 in user.office_days %}checked{% endif %}>
+              <span class="office-day-check" aria-hidden="true"></span>
+              <span>{{ label }}</span>
+            </label>
+          {% endfor %}
+        </div>
       </div>
-    </div>
-    <div class="card">
-      <h2>Notifiche ntfy</h2>
-      <label class="check"><input type="checkbox" name="ntfy_enabled" {% if user.ntfy_enabled %}checked{% endif %}> Abilita notifiche ntfy</label>
-      <label>Topic<input name="ntfy_topic" value="{{ user.ntfy_topic }}"></label>
-      <div class="actions">
-        <button class="alt" name="submit_action" value="test_ntfy">Testa notifiche</button>
+      <div class="card">
+        <h2>Notifiche ntfy</h2>
+        <label class="check"><input type="checkbox" name="ntfy_enabled" {% if user.ntfy_enabled %}checked{% endif %}> Abilita notifiche ntfy</label>
+        <label>Topic<input name="ntfy_topic" value="{{ user.ntfy_topic }}"></label>
+        <div class="actions">
+          <button class="alt" name="submit_action" value="test_ntfy">Testa notifiche</button>
+        </div>
       </div>
     </div>
     <div class="card actions">
@@ -87,8 +91,8 @@
     (function () {
       const customIcon = L.icon({
         iconUrl: "{{ url_for('static', filename='img/mio-pin.png') }}",
-        iconSize: [42, 42],
-        iconAnchor: [21, 42],
+        iconSize: [50, 50],
+        iconAnchor: [25, 50],
         popupAnchor: [0, -44]
       });
 
