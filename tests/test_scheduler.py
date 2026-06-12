@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import tempfile
 import unittest
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
 from autobedge.models import DailyAttendancePolicy, DailyScheduleSnapshot, SchedulerSettings, UserProfile
 from autobedge.scheduler import SchedulerManager
+from autobedge.storage import StorageManager
 
 
 class DummyUserManager:
@@ -22,6 +24,7 @@ class DummyUserManager:
 class DummyStorageManager:
     def __init__(self) -> None:
         self.saved_settings: SchedulerSettings | None = None
+        self.saved_schedules: list[DailyScheduleSnapshot] | None = None
 
     def load_scheduler_settings(self) -> SchedulerSettings | None:
         return None
@@ -29,11 +32,18 @@ class DummyStorageManager:
     def load_holidays(self) -> list[str] | None:
         return []
 
+    def load_schedules(self) -> list[DailyScheduleSnapshot] | None:
+        return None
+
     def save_scheduler_settings(self, settings: SchedulerSettings) -> bool:
         self.saved_settings = settings
         return True
 
     def save_holidays(self, holidays: list[str]) -> bool:
+        return True
+
+    def save_schedules(self, schedules: list[DailyScheduleSnapshot]) -> bool:
+        self.saved_schedules = list(schedules)
         return True
 
 
@@ -287,6 +297,81 @@ class SchedulerManagerAutoPlanTests(unittest.TestCase):
         self.assertEqual(scheduler._auto_planning_triggered_date, "2026-04-29")
         self.assertEqual(scheduler._auto_planning_triggered_key, "2026-04-29|14:34|50|50")
         self.assertNotEqual(first_schedule.planned_at, second_schedule.planned_at)
+
+
+class SchedulerPersistenceTests(unittest.TestCase):
+    def test_storage_round_trip_preserves_schedule_fields(self) -> None:
+        with tempfile.TemporaryDirectory() as data_dir:
+            storage = StorageManager(data_dir)
+            storage.begin()
+            entry = DailyScheduleSnapshot(
+                user_id=2,
+                username="alice",
+                date="2099-12-31",
+                planned_at="2099-12-30T07:00:00+0000",
+                in_office=True,
+                skip_badge_in=False,
+                skip_badge_out=False,
+                badge_in_executed=True,
+                badge_out_executed=False,
+                badge_in_at=1234.5,
+                badge_out_at=6789.0,
+                note="Permesso orario in uscita",
+            )
+
+            self.assertTrue(storage.save_schedules([entry]))
+            loaded = storage.load_schedules()
+
+            self.assertEqual(len(loaded), 1)
+            self.assertEqual(loaded[0], entry)
+
+    def test_plan_date_persists_schedules(self) -> None:
+        storage = DummyStorageManager()
+        scheduler = SchedulerManager(
+            DummyUserManager([SchedulerManagerAutoPlanTests._corem_user()]),
+            storage,
+            DummyNtpManager(),
+            DummyCoremApiManager(),
+            DummyNotificationManager(),
+            dry_run=True,
+        )
+        scheduler._settings = SchedulerSettings(auto_startup_enabled=False, auto_time="14:33")
+
+        scheduler._execute_planning_for_date("2026-04-29", 0)
+
+        self.assertIsNotNone(storage.saved_schedules)
+        self.assertEqual(len(storage.saved_schedules), 1)
+        self.assertEqual(storage.saved_schedules[0].username, "alice")
+
+    def test_begin_restores_future_schedules_and_drops_past(self) -> None:
+        with tempfile.TemporaryDirectory() as data_dir:
+            storage = StorageManager(data_dir)
+            storage.begin()
+            storage.save_schedules(
+                [
+                    DailyScheduleSnapshot(user_id=2, username="alice", date="2026-04-29"),
+                    DailyScheduleSnapshot(user_id=2, username="alice", date="2020-01-01"),
+                    DailyScheduleSnapshot(user_id=2, username="alice", date="2099-12-31"),
+                ]
+            )
+            scheduler = SchedulerManager(
+                DummyUserManager(),
+                storage,
+                DummyNtpManager(),
+                DummyCoremApiManager(),
+                DummyNotificationManager(),
+                dry_run=True,
+            )
+
+            try:
+                scheduler.begin()
+                dates = scheduler.get_planned_dates_snapshot()
+            finally:
+                scheduler.stop()
+
+            self.assertIn("2026-04-29", dates)
+            self.assertIn("2099-12-31", dates)
+            self.assertNotIn("2020-01-01", dates)
 
 
 if __name__ == "__main__":

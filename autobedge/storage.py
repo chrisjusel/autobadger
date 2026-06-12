@@ -8,6 +8,7 @@ from typing import Any
 
 from .models import (
     BadgeLogEntry,
+    DailyScheduleSnapshot,
     NtfySettings,
     SchedulerSettings,
     UserProfile,
@@ -54,6 +55,15 @@ class StorageManager:
 
     def save_ntfy_settings(self, settings: NtfySettings) -> bool:
         return self._write_json("ntfy.json", asdict(settings))
+
+    def load_schedules(self) -> list[DailyScheduleSnapshot] | None:
+        data = self._read_json("schedules.json")
+        if not isinstance(data, list):
+            return None
+        return [self._schedule_from_dict(item) for item in data if isinstance(item, dict)]
+
+    def save_schedules(self, schedules: list[DailyScheduleSnapshot]) -> bool:
+        return self._write_json("schedules.json", [asdict(entry) for entry in schedules])
 
     def load_scheduler_settings(self) -> SchedulerSettings | None:
         data = self._read_json("scheduler.json")
@@ -130,3 +140,20 @@ class StorageManager:
         data = asdict(user)
         data["badge_log"] = [asdict(entry) for entry in user.badge_log]
         return data
+
+    @staticmethod
+    def _schedule_from_dict(data: dict[str, Any]) -> DailyScheduleSnapshot:
+        return DailyScheduleSnapshot(
+            user_id=int(data.get("user_id", 0) or 0),
+            username=str(data.get("username") or ""),
+            date=str(data.get("date") or ""),
+            planned_at=str(data.get("planned_at") or ""),
+            in_office=bool(data.get("in_office", False)),
+            skip_badge_in=bool(data.get("skip_badge_in", True)),
+            skip_badge_out=bool(data.get("skip_badge_out", True)),
+            badge_in_executed=bool(data.get("badge_in_executed", False)),
+            badge_out_executed=bool(data.get("badge_out_executed", False)),
+            badge_in_at=float(data.get("badge_in_at", 0.0) or 0.0),
+            badge_out_at=float(data.get("badge_out_at", 0.0) or 0.0),
+            note=str(data.get("note") or ""),
+        )

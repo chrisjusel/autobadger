@@ -51,7 +51,12 @@ class SchedulerManager:
     def begin(self) -> None:
         self._settings = self.storage.load_scheduler_settings() or SchedulerSettings()
         self._holidays = self.storage.load_holidays() or []
+        self._schedules = self.storage.load_schedules() or []
+        current_date = self.ntp_manager.get_current_date()
+        if current_date:
+            self._purge_past_schedules(current_date)
         self._initialize_auto_planning_state()
+        LOG.info("Pianificazioni ripristinate dallo storage: %s righe.", len(self._schedules))
         LOG.info(
             "Scheduler avviato: startup_enabled=%s auto_time=%s triggered_date=%s triggered_key=%s",
             self._settings.auto_startup_enabled,
@@ -133,6 +138,7 @@ class SchedulerManager:
             removed = before - len(self._schedules)
         if removed == 0:
             return False, f"Nessuna pianificazione trovata per {self._format_display_date(date)}."
+        self._persist_schedules()
         if user_id > 0:
             user = self.user_manager.get_user_by_id(user_id)
             if user:
@@ -162,6 +168,7 @@ class SchedulerManager:
                     skipped_out += 1
         if skipped_in == 0 and skipped_out == 0:
             return False, "Nessuna pianificazione futura di oggi da cancellare."
+        self._persist_schedules()
         return True, f"Pianificazioni residue di oggi messe in skip (IN: {skipped_in}, OUT: {skipped_out})."
 
     def _task_loop(self) -> None:
@@ -309,6 +316,7 @@ class SchedulerManager:
             new_schedules.append(entry)
         with self._lock:
             self._schedules.extend(new_schedules)
+        self._persist_schedules()
         suffix = ", tutte in skip" if closed_note else ""
         if user_id > 0:
             user = self.user_manager.get_user_by_id(user_id)
@@ -346,6 +354,7 @@ class SchedulerManager:
                     else:
                         stored.badge_out_executed = True
                     break
+        self._persist_schedules()
 
     def _refresh_holidays_if_needed(self, timeinfo: datetime, force_refresh: bool = False) -> None:
         month_key = timeinfo.year * 100 + timeinfo.month
@@ -363,9 +372,18 @@ class SchedulerManager:
                 self._last_holiday_refresh_month_key = month_key
             self.storage.save_holidays(holidays)
 
+    def _persist_schedules(self) -> None:
+        with self._lock:
+            snapshot = [replace(entry) for entry in self._schedules]
+        self.storage.save_schedules(snapshot)
+
     def _purge_past_schedules(self, current_date: str) -> None:
         with self._lock:
+            before = len(self._schedules)
             self._schedules = [entry for entry in self._schedules if not entry.date or entry.date >= current_date]
+            changed = len(self._schedules) != before
+        if changed:
+            self._persist_schedules()
 
     def _clear_plan_for_date(self, date: str, user_id: int = 0) -> None:
         with self._lock:

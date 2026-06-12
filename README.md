@@ -82,6 +82,7 @@ File usati:
 - `holidays.json`
 - `ntfy.json`
 - `scheduler.json`
+- `schedules.json` (pianificazioni giornaliere, ripristinate dopo un riavvio)
 
 Puoi copiare i file esistenti nella directory:
 
