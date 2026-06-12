@@ -124,16 +124,6 @@ a {
   animation: cardIn .52s cubic-bezier(.22, .61, .36, 1) both;
 }
 
-.card:not(.nav):hover {
-  transform: translateY(-3px);
-  box-shadow: 0 26px 72px rgba(0, 0, 0, .36), inset 0 1px 0 rgba(255, 255, 255, .09);
-  border-color: rgba(255, 255, 255, .18);
-}
-
-.card:not(.nav):active {
-  transform: translateY(-1px);
-}
-
 .card:nth-of-type(1) { animation-delay: .02s; }
 .card:nth-of-type(2) { animation-delay: .07s; }
 .card:nth-of-type(3) { animation-delay: .12s; }
@@ -947,25 +937,6 @@ a.pill:active {
 
 .input-eye-btn:active {
   transform: translateY(-50%) scale(0.92);
-}
-
-.pending-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 9999;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px;
-  background: rgba(7, 19, 31, .92);
-  backdrop-filter: blur(3px);
-}
-
-.pending-card {
-  max-width: 560px;
-  width: 100%;
-  margin: 0;
-  text-align: center;
 }
 
 .pause-form-card {
@@ -2186,8 +2157,22 @@ body::before {
   height: 10px;
   border-radius: 999px;
   background:
-    repeating-linear-gradient(90deg, rgba(255, 255, 255, .10) 0 1px, transparent 1px 9.0909%),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, .10) 0 1px, transparent 1px 11.1111%),
     linear-gradient(90deg, rgba(255, 255, 255, .05), rgba(255, 255, 255, .09));
+}
+
+.dt-lunch {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 44.44%;
+  right: 44.44%;
+  border-radius: 2px;
+  background: repeating-linear-gradient(45deg, rgba(255, 255, 255, .10) 0 4px, rgba(255, 255, 255, .02) 4px 8px);
+}
+
+.dt-scale-lunch {
+  color: rgba(169, 190, 213, .65);
 }
 
 .dt-fill {
@@ -2243,13 +2228,15 @@ body::before {
 }
 
 /* ===== Toast ===== */
-.toast-host {
+.toast-stack {
   position: fixed;
   top: calc(14px + env(safe-area-inset-top));
   right: calc(14px + env(safe-area-inset-right));
   z-index: 10050;
   display: flex;
-  justify-content: flex-end;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
   pointer-events: none;
 }
 
@@ -2279,6 +2266,15 @@ body::before {
   border-color: rgba(255, 107, 107, .42);
   background: rgba(38, 16, 20, .9);
   color: #ff8989;
+}
+
+.toast-planning {
+  border-color: rgba(99, 164, 255, .42);
+  color: #cfe2ff;
+}
+
+.toast-planning .toast-icon i {
+  animation: spin .9s linear infinite;
 }
 
 .toast-icon { display: inline-flex; flex: 0 0 auto; }

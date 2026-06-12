@@ -94,16 +94,16 @@
       </nav>
     {% endif %}
   </div>
-  {% if message and request.endpoint != 'login' %}
-    {% set is_error = 'errore' in message.lower() or 'non valida' in message.lower() or 'logout' in message.lower() %}
-    <div class="toast-host">
-      <div class="toast{% if is_error %} toast-error{% endif %}" role="status" aria-live="polite">
+  <div class="toast-stack" id="toastStack">
+    {% if message and request.endpoint != 'login' %}
+      {% set is_error = 'errore' in message.lower() or 'non valida' in message.lower() or 'logout' in message.lower() %}
+      <div class="toast{% if is_error %} toast-error{% endif %}" role="status" aria-live="polite" data-toast-auto>
         <span class="toast-icon"><i data-lucide="{{ 'alert-triangle' if is_error else 'check-circle-2' }}"></i></span>
         <span class="toast-text">{{ message }}</span>
         <button type="button" class="toast-close" aria-label="Chiudi notifica"><i data-lucide="x"></i></button>
       </div>
-    </div>
-  {% endif %}
+    {% endif %}
+  </div>
   <div class="confirm-modal" id="confirmModal" aria-hidden="true">
     <div class="confirm-backdrop" data-confirm-cancel></div>
     <div class="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">

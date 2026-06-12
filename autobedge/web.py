@@ -41,18 +41,6 @@ class WebServerManager:
         return app
 
     def _configure_routes(self, app: Flask) -> None:
-        @app.before_request
-        def guard_pending_planning() -> Response | str | None:
-            if request.endpoint in {"static", "favicon_ico", "login", "login_post", "logout", "planning_status"}:
-                return None
-            user = self._current_user()
-            if user is None:
-                return None
-            planning_status = self.scheduler_manager.get_planning_status()
-            if planning_status.pending:
-                return self._planning_pending_page(user, planning_status.message)
-            return None
-
         @app.get("/favicon.ico")
         def favicon_ico() -> Response:
             return redirect(url_for("static", filename="img/favicon-32x32.png"))
@@ -375,9 +363,6 @@ class WebServerManager:
     def _login_page(self, message: str) -> str:
         return self._render("login.html", "Login", message=message)
 
-    def _planning_pending_page(self, user: UserProfile, message: str) -> str:
-        return self._render("planning_pending.html", "Pianificazione in corso", user, pending_message=message)
-
     def _dashboard_page(self, user: UserProfile, message: str) -> str:
         users = self.user_manager.get_all_users() if user.is_admin else [user]
         schedules = [entry for entry in self.scheduler_manager.get_schedules_snapshot() if user.is_admin or entry.user_id == user.id]
@@ -521,7 +506,7 @@ class WebServerManager:
         return datetime.fromtimestamp(epoch, self.ntp_manager.tz).strftime("%d/%m/%Y %H:%M")
 
     def _day_timeline(self, entry: DailyScheduleSnapshot) -> dict[str, object]:
-        start_min, end_min = 8 * 60, 19 * 60
+        start_min, end_min = 9 * 60, 18 * 60
         span = end_min - start_min
 
         def position(epoch: float) -> float | None:

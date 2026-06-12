@@ -73,51 +73,136 @@
 })();
 
 (function () {
-  const toast = document.querySelector(".toast");
-  if (!toast) {
-    return;
+  function getStack() {
+    let stack = document.getElementById("toastStack");
+    if (!stack) {
+      stack = document.createElement("div");
+      stack.className = "toast-stack";
+      stack.id = "toastStack";
+      document.body.appendChild(stack);
+    }
+    return stack;
   }
-  let dismissed = false;
 
-  function dismiss() {
-    if (dismissed) {
+  function dismiss(toast) {
+    if (toast.__dismissed) {
       return;
     }
-    dismissed = true;
+    toast.__dismissed = true;
     toast.classList.remove("toast-in");
     toast.classList.add("toast-out");
     window.setTimeout(function () {
-      const host = toast.closest(".toast-host");
-      if (host) {
-        host.remove();
-      }
+      toast.remove();
     }, 340);
   }
 
-  const closeBtn = toast.querySelector(".toast-close");
-  if (closeBtn) {
-    closeBtn.addEventListener("click", dismiss);
+  function activate(toast, opts) {
+    opts = opts || {};
+    const closeBtn = toast.querySelector(".toast-close");
+    if (closeBtn) {
+      closeBtn.addEventListener("click", function () {
+        dismiss(toast);
+      });
+    }
+    window.requestAnimationFrame(function () {
+      toast.classList.add("toast-in");
+    });
+    if (!opts.sticky) {
+      window.setTimeout(function () {
+        dismiss(toast);
+      }, opts.duration || 4400);
+    }
+    return {
+      el: toast,
+      dismiss: function () {
+        dismiss(toast);
+      },
+      setText: function (text) {
+        const node = toast.querySelector(".toast-text");
+        if (node) {
+          node.textContent = text;
+        }
+      },
+    };
   }
 
-  window.requestAnimationFrame(function () {
-    toast.classList.add("toast-in");
-  });
-  window.setTimeout(dismiss, 4400);
+  function spawn(message, opts) {
+    opts = opts || {};
+    const toast = document.createElement("div");
+    toast.className = "toast" + (opts.error ? " toast-error" : "") + (opts.planning ? " toast-planning" : "");
+    toast.setAttribute("role", "status");
+    const icon = opts.icon || (opts.error ? "alert-triangle" : opts.planning ? "loader-2" : "check-circle-2");
+    const iconSpan = document.createElement("span");
+    iconSpan.className = "toast-icon";
+    iconSpan.innerHTML = '<i data-lucide="' + icon + '"></i>';
+    const textSpan = document.createElement("span");
+    textSpan.className = "toast-text";
+    textSpan.textContent = message;
+    toast.appendChild(iconSpan);
+    toast.appendChild(textSpan);
+    if (!opts.sticky) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "toast-close";
+      button.setAttribute("aria-label", "Chiudi notifica");
+      button.innerHTML = '<i data-lucide="x"></i>';
+      toast.appendChild(button);
+    }
+    getStack().appendChild(toast);
+    if (window.lucide) {
+      window.lucide.createIcons();
+    }
+    return activate(toast, opts);
+  }
+
+  window.autobedgeToast = { spawn: spawn };
+
+  const serverToast = document.querySelector(".toast[data-toast-auto]");
+  if (serverToast) {
+    activate(serverToast, {});
+  }
+
+  try {
+    const done = window.sessionStorage.getItem("autobedge-plan-done");
+    if (done) {
+      window.sessionStorage.removeItem("autobedge-plan-done");
+      spawn(done, {});
+    }
+  } catch (_error) {}
 })();
 
 (function () {
   const meta = document.querySelector('meta[name="autobedge-planning-status-url"]');
-  const pendingOverlay = document.querySelector(".pending-overlay");
   const lockKey = "autobedge-planning-status-poller";
   const lockTtlMs = 12000;
-  const pollIntervalMs = 5000;
+  const pollIntervalMs = 4000;
   const instanceId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  const isDashboard = window.location.pathname === "/dashboard" || window.location.pathname === "/";
   let polling = false;
+  let lastPending = null;
+  let stickyToast = null;
 
-  if (!meta || pendingOverlay || window.__autobedgePlanningStatusPollingStarted) {
+  if (!meta || window.__autobedgePlanningStatusPollingStarted) {
     return;
   }
   window.__autobedgePlanningStatusPollingStarted = true;
+
+  function ensureSticky(message) {
+    if (stickyToast) {
+      stickyToast.setText(message);
+      return;
+    }
+    if (window.autobedgeToast) {
+      stickyToast = window.autobedgeToast.spawn(message, { sticky: true, planning: true });
+    }
+  }
+
+  function clearSticky() {
+    if (stickyToast) {
+      stickyToast.dismiss();
+      stickyToast = null;
+    }
+  }
 
   function nowMs() {
     return Date.now();
@@ -180,9 +265,23 @@
         return response.json();
       })
       .then(function (payload) {
-        if (payload && payload.pending) {
-          window.location.reload();
+        if (!payload) {
+          return;
         }
+        const pending = !!payload.pending;
+        if (pending) {
+          ensureSticky(payload.message || "Pianificazione in corso…");
+        } else {
+          clearSticky();
+          if (lastPending === true && isDashboard) {
+            try {
+              window.sessionStorage.setItem("autobedge-plan-done", payload.message || "Pianificazione aggiornata.");
+            } catch (_error) {}
+            window.location.reload();
+            return;
+          }
+        }
+        lastPending = pending;
       })
       .catch(function () {})
       .finally(function () {

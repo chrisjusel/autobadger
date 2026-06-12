@@ -60,12 +60,12 @@ class WebPendingPlanningTests(unittest.TestCase):
         with self.client.session_transaction() as session:
             session["user_id"] = self.user.id
 
-    def test_authenticated_pages_show_pending_overlay_when_planning_is_running(self) -> None:
+    def test_authenticated_pages_are_not_blocked_when_planning_is_running(self) -> None:
         response = self.client.get("/settings")
 
         self.assertEqual(response.status_code, 200)
-        self.assertIn(b"Aggiornamento pianificazioni", response.data)
-        self.assertIn(b"Pianificazione automatica in corso", response.data)
+        self.assertIn(b"Accesso web", response.data)
+        self.assertNotIn(b"Aggiornamento pianificazioni", response.data)
 
     def test_planning_status_endpoint_remains_available_during_pending_state(self) -> None:
         response = self.client.get("/api/planning-status")
