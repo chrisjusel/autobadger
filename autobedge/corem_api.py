@@ -121,9 +121,8 @@ class CoremApiManager:
             message = "JSON eventi non valido"
             self._log_failure(user, "SYS", message)
             return False, policy, message
-        for item in data:
-            if isinstance(item, dict):
-                self._apply_event_to_policy(policy, item, date)
+        for item in self._flatten_event_items(data, user.corem_user_id):
+            self._apply_event_to_policy(policy, item, date)
         return True, policy, ""
 
     def fetch_event_details(self, user: UserProfile, start_date: str, end_date: str) -> tuple[bool, list[CoremEventEntry], str]:
@@ -148,9 +147,7 @@ class CoremApiManager:
             self._log_failure(user, "SYS", message)
             return False, [], message
         events: list[CoremEventEntry] = []
-        for item in data:
-            if not isinstance(item, dict):
-                continue
+        for item in self._flatten_event_items(data, user.corem_user_id):
             start_at = str(item.get("dataInizio") or "").strip()
             end_at = str(item.get("dataFine") or "").strip()
             if not start_at and not end_at:
@@ -162,7 +159,7 @@ class CoremApiManager:
                     localization_name=self._localization_names(item),
                     status=str(item.get("stato") or "").strip(),
                     event_type=str(item.get("tipoEvento") or "").strip(),
-                    is_absence=bool(item.get("assenza", False)),
+                    is_absence=self._reduces_work_time(item),
                     start_at=start_at,
                     end_at=end_at,
                 )
@@ -405,20 +402,55 @@ class CoremApiManager:
         self.user_manager.append_badge_log(user.id, type_, False, note)
 
     @classmethod
+    def _flatten_event_items(cls, data: Any, corem_user_id: int) -> list[dict[str, Any]]:
+        """Normalizza la risposta eventi di Corem in una lista piatta di dict-evento.
+
+        Gestisce sia la forma piatta (lista di eventi) sia quella annidata per sede
+        ``[ {sede}, [ {"utente": {...}, "assenze": [...]}, ... ] ]``. Nella forma
+        annidata vengono raccolte solo le assenze dell'utente richiesto.
+        """
+        collected: list[dict[str, Any]] = []
+        cls._walk_event_nodes(data, corem_user_id, collected)
+        return collected
+
+    @classmethod
+    def _walk_event_nodes(cls, node: Any, corem_user_id: int, collected: list[dict[str, Any]]) -> None:
+        if isinstance(node, list):
+            for child in node:
+                cls._walk_event_nodes(child, corem_user_id, collected)
+            return
+        if not isinstance(node, dict):
+            return
+        if isinstance(node.get("assenze"), list):
+            utente = node.get("utente")
+            utente_id = int(utente.get("id", 0) or 0) if isinstance(utente, dict) else 0
+            if corem_user_id <= 0 or utente_id == corem_user_id:
+                for event in node["assenze"]:
+                    if isinstance(event, dict):
+                        collected.append(event)
+            return
+        if node.get("dataInizio") or node.get("dataFine") or node.get("tipoEvento"):
+            collected.append(node)
+
+    @staticmethod
+    def _reduces_work_time(item: dict[str, Any]) -> bool:
+        return str(item.get("influisceTempiLavoro") or "").strip().upper() == "NEGATIVAMENTE"
+
+    @classmethod
     def _apply_event_to_policy(cls, policy: DailyAttendancePolicy, item: dict[str, Any], date: str) -> None:
         tipo_evento = str(item.get("tipoEvento") or "").strip()
-        assenza = bool(item.get("assenza", False))
+        reduces_work_time = cls._reduces_work_time(item)
         nome = cls._localized_event_name(item)
         data_inizio = str(item.get("dataInizio") or "").strip()
         data_fine = str(item.get("dataFine") or "").strip()
         if not cls._event_intersects_date(data_inizio, data_fine, date) or not tipo_evento:
             return
-        if tipo_evento == "GIORNALIERO" and assenza and ("ferie" in nome.lower() or "festiv" in nome.lower()):
+        if tipo_evento == "GIORNALIERO" and reduces_work_time and ("ferie" in nome.lower() or "festiv" in nome.lower()):
             policy.skip_badge_in = True
             policy.skip_badge_out = True
             policy.note = f"Assenza giornaliera: {nome}"
             return
-        if tipo_evento != "ORARIO" or not assenza:
+        if tipo_evento != "ORARIO" or not reduces_work_time:
             return
         start_minutes = cls._time_from_datetime(str(item.get("oraInizio") or item.get("orarioInizio") or item.get("dataInizio") or ""))
         end_minutes = cls._time_from_datetime(str(item.get("oraFine") or item.get("orarioFine") or item.get("dataFine") or ""))
