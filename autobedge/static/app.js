@@ -302,3 +302,51 @@
   checkPlanningStatus();
   window.setInterval(checkPlanningStatus, pollIntervalMs);
 })();
+
+(function () {
+  const timeline = document.querySelector("[data-timeline]");
+  if (!timeline || timeline.dataset.isToday !== "1") {
+    return;
+  }
+
+  const startMin = parseInt(timeline.dataset.windowStart, 10);
+  const endMin = parseInt(timeline.dataset.windowEnd, 10);
+  const baseMin = parseInt(timeline.dataset.nowMinutes, 10);
+  if (!Number.isFinite(startMin) || !Number.isFinite(endMin) || !Number.isFinite(baseMin) || endMin <= startMin) {
+    return;
+  }
+
+  const span = endMin - startMin;
+  const loadTs = Date.now();
+  const elapsedEl = timeline.querySelector(".dt-elapsed");
+  const nowEl = timeline.querySelector(".dt-now");
+  const nowLabel = timeline.querySelector(".dt-now-label");
+
+  function pad(value) {
+    return value < 10 ? "0" + value : "" + value;
+  }
+
+  function update() {
+    const current = baseMin + (Date.now() - loadTs) / 60000;
+    const clamped = Math.max(startMin, Math.min(endMin, current));
+    const pct = ((clamped - startMin) / span) * 100;
+    if (elapsedEl) {
+      elapsedEl.style.width = pct.toFixed(2) + "%";
+    }
+    if (nowEl) {
+      if (current >= startMin && current <= endMin) {
+        nowEl.style.display = "";
+        nowEl.style.left = pct.toFixed(2) + "%";
+        if (nowLabel) {
+          const minutes = Math.floor(current);
+          nowLabel.textContent = "ora " + pad(Math.floor(minutes / 60)) + ":" + pad(minutes % 60);
+        }
+      } else {
+        nowEl.style.display = "none";
+      }
+    }
+  }
+
+  update();
+  window.setInterval(update, 30000);
+})();

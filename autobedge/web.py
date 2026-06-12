@@ -548,6 +548,10 @@ class WebServerManager:
             "elapsed_pct": elapsed_pct,
             "show_now": show_now,
             "now_time": now_time,
+            "is_today": entry.date == current_date,
+            "now_minutes": now_minutes,
+            "window_start": start_min,
+            "window_end": end_min,
         }
 
     def _build_presence_calendar(self, month_value: str, presences: list[CoremPresenceEntry], events: list[CoremEventEntry], holidays: list[dict[str, str]]) -> tuple[str, list[list[dict[str, object]]], dict[str, object]]:
