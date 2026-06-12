@@ -73,6 +73,39 @@
 })();
 
 (function () {
+  const toast = document.querySelector(".toast");
+  if (!toast) {
+    return;
+  }
+  let dismissed = false;
+
+  function dismiss() {
+    if (dismissed) {
+      return;
+    }
+    dismissed = true;
+    toast.classList.remove("toast-in");
+    toast.classList.add("toast-out");
+    window.setTimeout(function () {
+      const host = toast.closest(".toast-host");
+      if (host) {
+        host.remove();
+      }
+    }, 340);
+  }
+
+  const closeBtn = toast.querySelector(".toast-close");
+  if (closeBtn) {
+    closeBtn.addEventListener("click", dismiss);
+  }
+
+  window.requestAnimationFrame(function () {
+    toast.classList.add("toast-in");
+  });
+  window.setTimeout(dismiss, 4400);
+})();
+
+(function () {
   const meta = document.querySelector('meta[name="autobedge-planning-status-url"]');
   const pendingOverlay = document.querySelector(".pending-overlay");
   const lockKey = "autobedge-planning-status-poller";

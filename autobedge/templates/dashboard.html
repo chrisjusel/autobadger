@@ -36,6 +36,23 @@
           <span class="chip chip-pending"><i data-lucide="clock" style="width:13px;height:13px;"></i>Badge OUT Attesa</span>
         {% endif %}
       </div>
+      {% if not user.is_admin %}
+        {% set tl = day_timeline(entry) %}
+        <div class="day-timeline" aria-label="Linea del tempo della giornata">
+          <div class="dt-track">
+            {% if tl.show_fill %}
+              <span class="dt-fill{% if tl.in_done and tl.out_done %} dt-fill-done{% endif %}" style="left: {{ tl.in_pct }}%; right: {{ 100 - tl.out_pct }}%;"></span>
+            {% endif %}
+            {% if not tl.skip_in and tl.in_pct is not none %}
+              <span class="dt-marker dt-in{% if tl.in_done %} is-done{% endif %}" style="left: {{ tl.in_pct }}%;"><span class="dt-label">IN {{ tl.in_time }}</span></span>
+            {% endif %}
+            {% if not tl.skip_out and tl.out_pct is not none %}
+              <span class="dt-marker dt-out{% if tl.out_done %} is-done{% endif %}" style="left: {{ tl.out_pct }}%;"><span class="dt-label">OUT {{ tl.out_time }}</span></span>
+            {% endif %}
+          </div>
+          <div class="dt-scale"><span>08</span><span>13:30</span><span>19</span></div>
+        </div>
+      {% endif %}
     {% endif %}
     <table>
       <thead>

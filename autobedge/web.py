@@ -351,6 +351,7 @@ class WebServerManager:
             fmt_date=self._fmt_date,
             fmt_datetime=self._fmt_datetime,
             schedule_cell=self._schedule_cell,
+            day_timeline=self._day_timeline,
             **context,
         )
 
@@ -518,6 +519,34 @@ class WebServerManager:
         if epoch <= 0:
             return "-"
         return datetime.fromtimestamp(epoch, self.ntp_manager.tz).strftime("%d/%m/%Y %H:%M")
+
+    def _day_timeline(self, entry: DailyScheduleSnapshot) -> dict[str, object]:
+        start_min, end_min = 8 * 60, 19 * 60
+        span = end_min - start_min
+
+        def position(epoch: float) -> float | None:
+            if epoch <= 0:
+                return None
+            local = datetime.fromtimestamp(epoch, self.ntp_manager.tz)
+            minutes = max(start_min, min(end_min, local.hour * 60 + local.minute))
+            return round((minutes - start_min) / span * 100, 2)
+
+        def clock(epoch: float) -> str:
+            return datetime.fromtimestamp(epoch, self.ntp_manager.tz).strftime("%H:%M") if epoch > 0 else "-"
+
+        in_pct = position(entry.badge_in_at)
+        out_pct = position(entry.badge_out_at)
+        return {
+            "in_pct": in_pct,
+            "out_pct": out_pct,
+            "in_time": clock(entry.badge_in_at),
+            "out_time": clock(entry.badge_out_at),
+            "skip_in": entry.skip_badge_in,
+            "skip_out": entry.skip_badge_out,
+            "in_done": entry.badge_in_executed,
+            "out_done": entry.badge_out_executed,
+            "show_fill": (not entry.skip_badge_in and not entry.skip_badge_out and in_pct is not None and out_pct is not None),
+        }
 
     def _build_presence_calendar(self, month_value: str, presences: list[CoremPresenceEntry], events: list[CoremEventEntry], holidays: list[dict[str, str]]) -> tuple[str, list[list[dict[str, object]]], dict[str, object]]:
         year = int(month_value[:4])
