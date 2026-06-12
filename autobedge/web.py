@@ -521,6 +521,20 @@ class WebServerManager:
 
         in_pct = position(entry.badge_in_at)
         out_pct = position(entry.badge_out_at)
+
+        current_date = self.ntp_manager.get_current_date()
+        now_local = self.ntp_manager.local_datetime()
+        now_minutes = now_local.hour * 60 + now_local.minute
+        if entry.date and entry.date < current_date:
+            elapsed_pct, show_now, now_time = 100.0, False, ""
+        elif entry.date == current_date:
+            clamped = max(start_min, min(end_min, now_minutes))
+            elapsed_pct = round((clamped - start_min) / span * 100, 2)
+            show_now = start_min <= now_minutes <= end_min
+            now_time = now_local.strftime("%H:%M")
+        else:
+            elapsed_pct, show_now, now_time = 0.0, False, ""
+
         return {
             "in_pct": in_pct,
             "out_pct": out_pct,
@@ -531,6 +545,9 @@ class WebServerManager:
             "in_done": entry.badge_in_executed,
             "out_done": entry.badge_out_executed,
             "show_fill": (not entry.skip_badge_in and not entry.skip_badge_out and in_pct is not None and out_pct is not None),
+            "elapsed_pct": elapsed_pct,
+            "show_now": show_now,
+            "now_time": now_time,
         }
 
     def _build_presence_calendar(self, month_value: str, presences: list[CoremPresenceEntry], events: list[CoremEventEntry], holidays: list[dict[str, str]]) -> tuple[str, list[list[dict[str, object]]], dict[str, object]]:
